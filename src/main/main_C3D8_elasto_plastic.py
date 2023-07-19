@@ -64,7 +64,7 @@ def main():
     bound.addForce(16, 0.0, 0.0, -10000.0)
 
     # 解析を実行する
-    fem = NonlinearFEM(nodes, elems, bound, 10)
+    fem = NonlinearFEM(nodes, elems, bound, 1)
     fem.analysis()
 
     # 結果を出力する

@@ -20,10 +20,7 @@ class C3D8:
         self.nodeDof = 3                       # 節点の自由度
         self.no = no                           # 要素番号
         self.nodes = nodes                     # 節点の集合(Node型のリスト)
-        self.young = material.young            # ヤング率
-        self.poisson = material.poisson        # ポアソン比
-        self.density = material.density        # 密度
-        self.material = material               # 材料の構成則
+        self.material = []                     # 材料モデルのリスト
 
         self.ipNum = 8                         # 積分点の数
         self.w1 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 積分点の重み係数1
@@ -36,39 +33,14 @@ class C3D8:
         self.ci = np.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),   # 積分点の座標(a,b,c座標系, np.array型のリスト)
                             np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0)])
         
-        self.incNo = 0   # インクリメントのNo
+        #self.incNo = 0   # インクリメントのNo
 
-        # 要素内の変位、応力、塑性ひずみを初期化する
+        # 要素内の変位を初期化する
         self.vecDisp = np.zeros(self.nodeNum * self.nodeDof)   # 要素内の変位
-        
-        self.yeildFlgList = []                                 # 要素が降伏しているか判定するフラグ
-        self.vecEStrainList = []                               # 要素内の弾性ひずみ(np.array型のリスト)
-        self.vecPStrainList = []                               # 要素内の塑性ひずみ(np.array型のリスト)
-        self.ePStrainList = []                                 # 要素内の相当塑性ひずみ(リスト)
-        self.vecStressList = []                                # 要素内の応力(np.array型のリスト)
-        self.misesList = []                                    # 要素内のミーゼス応力(リスト)
-        for i in range(self.ipNum):
-            self.yeildFlgList.append(False)
-            self.vecEStrainList.append(np.zeros(6))
-            self.vecPStrainList.append(np.zeros(6))
-            self.ePStrainList.append(0.0)
-            self.vecStressList.append(np.zeros(6))
-            self.misesList.append(0.0)
 
-        # 前回のインクリメントのひずみを初期化する
-        self.vecPrevEStrainList = []   # 要素内の弾性ひずみ(np.array型のリスト)
-        self.vecPrevPStrainList = []   # 要素内の塑性ひずみ(np.array型のリスト)
-        self.prevEPStrainList = []     # 要素内の相当塑性ひずみ(リスト)
-
-        for i in range(self.ipNum):
-            self.vecPrevEStrainList.append(np.zeros(6))
-            self.vecPrevPStrainList.append(np.zeros(6))
-            self.prevEPStrainList.append(0.0)
-
-        # Dマトリクスを初期化する
-        self.matD = []
-        for i in range(self.ipNum):
-            self.matD.append(self.makeDematrix())
+        # 材料モデルを初期化する
+        for ip in range(self.ipNum):
+            self.material.append(material)
 
     # 要素接線剛性マトリクスKetを作成する
     def makeKetmatrix(self):
@@ -86,16 +58,9 @@ class C3D8:
         # Ketマトリクスをガウス積分で計算する
         matKet = np.zeros([self.nodeDof * self.nodeNum, self.nodeDof * self.nodeNum])
         for i in range(self.ipNum):
-            matKet += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.matD[i] @ matBbar[i] * LA.det(matJ[i])
+            matKet += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].matD @ matBbar[i] * LA.det(matJ[i])
 
         return matKet
-
-    # 弾性状態のDマトリクスを作成する
-    def makeDematrix(self):
-
-        matD = Dmatrix(self.young, self.poisson).makeDematrix()
-
-        return matD
 
     # ヤコビ行列を計算する
     # a : a座標値
@@ -285,40 +250,20 @@ class C3D8:
     # vecDisp : 要素節点の変位ベクトル(np.array型)
     # incNo   : インクリメントNo
     def update(self, vecDisp, incNo):
-
-        self.returnMapping(vecDisp, incNo)
-        self.vecDisp = vecDisp
-        self.incNo = incNo
-
-    # Return Mapping法により、応力、塑性ひずみ、降伏判定を更新する
-    # vecDisp : 要素節点の変位ベクトル(np.array型)
-    # incNo   : インクリメントNo
-    def returnMapping(self, vecDisp, incNo):
-
-        # 各積分点の全ひずみを求める
-        vecStrainList = self.makeStrainVector(vecDisp)
-
-        # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
+        
+        # 積分点ループ
         for i in range(self.ipNum):
+            
+            # Bマトリックスを作成
+            matBbar = self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i])
+            
+            # 構成則の内部変数の更新
+            self.material[i].update(matBbar, vecDisp, incNo)
+        
+        # 要素内変位の更新
+        self.vecDisp = vecDisp
+        #self.incNo = incNo
 
-            # リターンマッピング法を計算する
-            if self.incNo == incNo:   # 前回と同じインクリメントの場合
-                vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep = self.material.returnMapping3D(vecStrainList[i], self.vecPrevPStrainList[i], self.prevEPStrainList[i])
-
-            else:   # 前回と異なるインクリメントの場合
-                self.vecPrevEStrainList = self.vecEStrainList
-                self.vecPrevPStrainList = self.vecPStrainList
-                self.prevEPStrainList = self.ePStrainList
-
-                vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep = self.material.returnMapping3D(vecStrainList[i], self.vecPStrainList[i], self.ePStrainList[i])
-
-            self.vecStressList[i] = vecStress
-            self.vecEStrainList[i] = vecEStrain
-            self.vecPStrainList[i] = vecPStrain
-            self.ePStrainList[i] = ePStrain
-            self.yeildFlgList[i] = yieldFlg
-            self.misesList[i] = self.misesStress(vecStress)
-            self.matD[i] = matDep
 
     # 内力ベクトルqを作成する
     def makeqVector(self):
@@ -336,44 +281,19 @@ class C3D8:
         # 内力ベクトルqを計算する
         vecq = np.zeros(self.nodeDof * self.nodeNum)
         for i in range(self.ipNum):
-            vecq += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.vecStressList[i] * LA.det(matJ[i])
+            vecq += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].vecStressList * LA.det(matJ[i])
 
         return vecq
-
-    # 積分点のひずみベクトルのリストを作成する
-    # vecDisp : 要素節点の変位のリスト
-    def makeStrainVector(self, vecDisp):
-
-        # Bbarマトリクスを計算する
-        matBbar = []
-        for i in range(self.ipNum):
-            matBbar.append(self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i]))
-
-        # 積分点のひずみを計算する
-        vecIpStrains = []
-        for i in range(self.ipNum):
-            vecIpStrains.append(np.array(matBbar[i] @ vecDisp)) 
-
-        return vecIpStrains
-
-    # ミーゼス応力を計算する
-    # vecStress : 応力ベクトル(np.array型)
-    def misesStress(self, vecStress):
-
-        tmp1 = np.square(vecStress[0] - vecStress[1]) + np.square(vecStress[1] - vecStress[2]) + np.square(vecStress[2] - vecStress[0])
-        tmp2 = 6.0 * (np.square(vecStress[3]) + np.square(vecStress[4]) + np.square(vecStress[5]))
-        mises = np.sqrt(0.5 * (tmp1 + tmp2))
-
-        return mises
 
     # 要素の出力データを作成する
     def makeOutputData(self):
 
-        output = ElementOutputData(self,
-                                   self.vecStressList,
-                                   self.vecEStrainList,
-                                   self.vecPStrainList,
-                                   self.ePStrainList,
-                                   self.misesList)
+        a = 1
+        #output = ElementOutputData(self,
+        #                           self.vecStressList,
+        #                           self.vecEStrainList,
+        #                           self.vecPStrainList,
+        #                           self.ePStrainList,
+        #                           self.misesList)
 
-        return output
+        #return output

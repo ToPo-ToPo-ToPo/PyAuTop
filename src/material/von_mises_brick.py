@@ -22,6 +22,24 @@ class MisesMaterial:
         self.pStrainLine = []                            # 真応力-塑性ひずみ多直線の塑性ひずみデータ
         self.itrNum = 100                                # ニュートン・ラプソン法の収束回数の上限
         self.tol = 1.0e-06                               # ニュートン・ラプソン法の収束基準
+        self.incNo = 0                                   # インクリメントのNo
+
+        # 関連する変数を初期化する
+        self.yeildFlgList = False                        # 要素が降伏しているか判定するフラグ
+        self.vecEStrainList = np.zeros(6)                # 要素内の弾性ひずみ
+        self.vecPStrainList = np.zeros(6)                # 要素内の塑性ひずみ
+        self.ePStrainList = 0.0                          # 要素内の相当塑性ひずみ
+        self.vecStressList = np.zeros(6)                 # 要素内の応力
+        self.misesList = 0.0                             # 要素内のミーゼス応力
+
+        # 前回のインクリメントのひずみを初期化する
+        self.vecPrevEStrainList = np.zeros(6)            # 要素内の弾性ひずみ(np.array型のリスト)
+        self.vecPrevPStrainList = np.zeros(6)            # 要素内の塑性ひずみ(np.array型のリスト)
+        self.prevEPStrainList = 0.0                      # 要素内の相当塑性ひずみ(リスト)
+
+        # Dマトリックスを初期化する
+        self.matD = Dmatrix(self.young, self.poisson).makeDematrix()
+
 
     # 真応力-塑性ひずみ多直線のデータを追加する
     # (入力されるデータはひずみが小さい順になり、最初の塑性ひずみは0.0にならなければいけない)
@@ -68,6 +86,7 @@ class MisesMaterial:
                     no = i
                     break
             if no is None :
+                print('epStrain = ' + str(ePStrain))
                 raise ValueError("相当塑性ひずみが定義した範囲を超えています。")
 
             hDash = self.makePlasticModule(ePStrain)
@@ -92,6 +111,34 @@ class MisesMaterial:
         h = (self.stressLine[no+1] - self.stressLine[no]) / (self.pStrainLine[no+1] - self.pStrainLine[no])
 
         return h
+
+    # Return Mapping法により、応力、塑性ひずみ、降伏判定を更新する
+    # vecDisp : 要素節点の変位ベクトル(np.array型)
+    # incNo   : インクリメントNo
+    def update(self, matBbar, vecDisp, incNo):
+
+        # 各積分点の全ひずみを求める
+        vecStrainList = self.makeStrainVector(matBbar, vecDisp)
+
+        # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
+        # リターンマッピング法を計算する
+        if self.incNo == incNo:   # 前回と同じインクリメントの場合
+            vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep = self.returnMapping3D(vecStrainList, self.vecPrevPStrainList, self.prevEPStrainList)
+            
+        else:   # 前回と異なるインクリメントの場合
+            self.vecPrevEStrainList = self.vecEStrainList
+            self.vecPrevPStrainList = self.vecPStrainList
+            self.prevEPStrainList = self.ePStrainList
+
+            vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep = self.returnMapping3D(vecStrainList, self.vecPStrainList, self.ePStrainList)
+
+        self.vecStressList = vecStress
+        self.vecEStrainList = vecEStrain
+        self.vecPStrainList = vecPStrain
+        self.ePStrainList = ePStrain
+        self.yeildFlgList = yieldFlg
+        self.misesList = self.misesStress(vecStress)
+        self.matD = matDep
 
     # Return Mapping法により、3次元の応力、塑性ひずみ、相当塑性ひずみ、降伏判定を計算する
     # vecStrain      : 全ひずみ
@@ -173,28 +220,28 @@ class MisesMaterial:
         ePStrain = prevEPStrain + np.sqrt(2.0 / 3.0) * deltaGamma
 
         # 応力を求める
-        vecStress = np.array([tenStress[0,0], 
-                              tenStress[1,1], 
-                              tenStress[2,2], 
-                              tenStress[1,2],
-                              tenStress[0,2],
-                              tenStress[0,1]])
+        vecStress = np.array([tenStress[0, 0], 
+                              tenStress[1, 1], 
+                              tenStress[2, 2], 
+                              tenStress[1, 2],
+                              tenStress[0, 2],
+                              tenStress[0, 1]])
 
         # 弾性ひずみを求める
-        vecEStrain = np.array([tenEStrain[0,0], 
-                               tenEStrain[1,1], 
-                               tenEStrain[2,2], 
-                               2.0 * tenEStrain[1,2],
-                               2.0 * tenEStrain[0,2],
-                               2.0 * tenEStrain[0,1]])
+        vecEStrain = np.array([tenEStrain[0, 0], 
+                               tenEStrain[1, 1], 
+                               tenEStrain[2, 2], 
+                               2.0 * tenEStrain[1, 2],
+                               2.0 * tenEStrain[0, 2],
+                               2.0 * tenEStrain[0, 1]])
 
         # 塑性ひずみを求める
-        vecPStrain = np.array([tenPStrain[0,0], 
-                               tenPStrain[1,1], 
-                               tenPStrain[2,2], 
-                               2.0 * tenPStrain[1,2],
-                               2.0 * tenPStrain[0,2],
-                               2.0 * tenPStrain[0,1]])
+        vecPStrain = np.array([tenPStrain[0, 0], 
+                               tenPStrain[1, 1], 
+                               tenPStrain[2, 2], 
+                               2.0 * tenPStrain[1, 2],
+                               2.0 * tenPStrain[0, 2],
+                               2.0 * tenPStrain[0, 1]])
 
         # 整合接線係数を求める
         if yieldFlg == True:
@@ -243,3 +290,21 @@ class MisesMaterial:
         matDep = np.array(matA - tmp1 / tmp2)
 
         return matDep
+    
+    # 積分点のひずみベクトルのリストを作成する
+    # vecDisp : 要素節点の変位のリスト
+    def makeStrainVector(self, matBbar, vecDisp):
+
+        vecIpStrains = matBbar @ vecDisp 
+
+        return vecIpStrains
+
+    # ミーゼス応力を計算する
+    # vecStress : 応力ベクトル(np.array型)
+    def misesStress(self, vecStress):
+
+        tmp1 = np.square(vecStress[0] - vecStress[1]) + np.square(vecStress[1] - vecStress[2]) + np.square(vecStress[2] - vecStress[0])
+        tmp2 = 6.0 * (np.square(vecStress[3]) + np.square(vecStress[4]) + np.square(vecStress[5]))
+        mises = np.sqrt(0.5 * (tmp1 + tmp2))
+
+        return mises

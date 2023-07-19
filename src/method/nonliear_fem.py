@@ -37,6 +37,11 @@ class NonlinearFEM:
         vecDisp = np.zeros(len(self.nodes) * self.nodeDof)   # 全節点の変位ベクトル
         vecR = np.zeros(len(self.nodes) * self.nodeDof)      # 残差力ベクトル
         for i in range(self.incNum):
+
+            print('============================================================')
+            print('Incremental step' + str(i))
+            print('============================================================')
+
             vecDispFirst = vecDisp.copy()   # 初期の全節点の変位ベクトル
             vecf = vecfList[i]              # i+1番インクリメントの荷重
             vecBoundDisp = self.bound.makeDispVector()
@@ -100,6 +105,11 @@ class NonlinearFEM:
                 ResiForceRate = np.abs(vecRc).max() / aveForce
                 if dispRate < self.cn and ResiForceRate < self.rn:
                     break
+
+                print('----------------------------------------------------')
+                print('Newton loop: step' + str(j))
+                print('redisual = ' + str(ResiForceRate))
+                print('----------------------------------------------------')
 
             # インクリメントの最終的な変位べクトルを格納する
             self.vecDispList.append(vecDisp.copy())
@@ -185,6 +195,7 @@ class NonlinearFEM:
             for i in range(len(elem.nodes)):
                 for j in range(elem.nodeDof):
                     vecElemDisp[i * elem.nodeDof + j] = vecDisp[(elem.nodes[i].no - 1) * self.nodeDof + j]
+
             elem.update(vecElemDisp, incNo) 
 
     # 解析結果をテキストファイルに出力する
@@ -222,7 +233,7 @@ class NonlinearFEM:
                 "Young".rjust(columNum) + "Poisson".rjust(columNum) + "Thickness".rjust(columNum) + 
                 "Area".rjust(columNum) + "Density".rjust(columNum) + "\n")
         f.write("-" * columNum * 7 + "-" * nodeNoColumNum + "\n")
-        for elem in self.elements:
+        """for elem in self.elements:
             strNo = str(elem.no).rjust(columNum)
             strType = str(elem.__class__.__name__ ).rjust(columNum)
             strNodeNo = ""
@@ -243,7 +254,7 @@ class NonlinearFEM:
             if not elem.density is None:
                 strDensity = str(format(elem.density, floatDigits).rjust(columNum))
             f.write(strNo + strType + strNodeNo + strYoung + strPoisson + 
-                    strThickness + strArea + strDensity + "\n")
+                    strThickness + strArea + strDensity + "\n")"""
         f.write("\n")
 
         # 単点拘束情報を出力する
@@ -317,7 +328,7 @@ class NonlinearFEM:
             f.write("\n")
 
             # 応力データを出力する
-            f.write("***** Stress Data ******\n")
+            """f.write("***** Stress Data ******\n")
             f.write("Element No".rjust(columNum) + "Integral No".rjust(columNum) + "Stress XX".rjust(columNum) + "Stress YY".rjust(columNum) + 
                     "Stress ZZ".rjust(columNum) + "Stress XY".rjust(columNum) + "Stress XZ".rjust(columNum) + "Stress YZ".rjust(columNum) +
                     "Mises".rjust(columNum) + "\n")
@@ -378,7 +389,7 @@ class NonlinearFEM:
                     strEPStrain = str(format(elemOutputData.ipEPStrainList[j], floatDigits).rjust(30))
                     f.write(strElemNo + strIntNo + strPStrainXX + strPStrainYY + strPStrainZZ + 
                             strPStrainXY + strPStrainXZ + strPStrainYZ + strEPStrain + "\n")
-            f.write("\n")           
+            f.write("\n") """          
 
             # 反力のデータを出力する
             f.write("***** Reaction Force Data ******\n")
