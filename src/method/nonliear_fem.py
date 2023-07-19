@@ -100,7 +100,11 @@ class FEM:
                 ResiForceRate = np.abs(vecRc).max() / aveForce
                 if dispRate < self.cn and ResiForceRate < self.rn:
                     break
-
+                
+                print('----------------------------------------------------')
+                print('Newton loop: step' + str(j))
+                print('redisual = ' + str(ResiForceRate))
+                print('----------------------------------------------------')
             # インクリメントの最終的な変位べクトルを格納する
             self.vecDispList.append(vecDisp.copy())
 
