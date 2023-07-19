@@ -40,6 +40,7 @@ class C3D8:
 
         # 要素内の変位、応力、塑性ひずみを初期化する
         self.vecDisp = np.zeros(self.nodeNum * self.nodeDof)   # 要素内の変位
+        
         self.yeildFlgList = []                                 # 要素が降伏しているか判定するフラグ
         self.vecEStrainList = []                               # 要素内の弾性ひずみ(np.array型のリスト)
         self.vecPStrainList = []                               # 要素内の塑性ひずみ(np.array型のリスト)

@@ -3,7 +3,7 @@
 import numpy as np
 import numpy.linalg as LA
 
-class FEM:
+class NonlinearFEM:
     # コンストラクタ
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
     # elements : 要素は種類ごとにソートされている前提(C3D８型のリスト)
@@ -22,7 +22,7 @@ class FEM:
         self.cn = 0.01             # ニュートン法の変位の収束判定のパラメータ
 
     # 陰解法で解析を行う
-    def impAnalysis(self):
+    def analysis(self):
 
         self.vecDispList = []          # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.vecRFList = []            # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)

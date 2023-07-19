@@ -5,7 +5,7 @@ sys.path.append('../')
 from model.node import Node
 from material.von_mises_brick import MisesMaterial
 from boundary import Boundary
-from method.nonliear_fem import FEM
+from method.nonliear_fem import NonlinearFEM
 from model.element.C3D8 import C3D8
 
 # メインの処理
@@ -64,11 +64,11 @@ def main():
     bound.addForce(16, 0.0, 0.0, -10000.0)
 
     # 解析を実行する
-    fem = FEM(nodes, elems, bound, 10)
-    fem.impAnalysis()
+    fem = NonlinearFEM(nodes, elems, bound, 10)
+    fem.analysis()
 
     # 結果を出力する
-    fem.outputTxt("../../output/test")
+    fem.outputTxt("../../output/C3D8_test")
 
 if __name__ == '__main__':
     main()
