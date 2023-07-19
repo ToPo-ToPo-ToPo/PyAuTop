@@ -1,12 +1,16 @@
 #https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
+from os.path import dirname, abspath
 import sys
-sys.path.append('../')
-from model.node import Node
-from material.von_mises_brick import MisesMaterial
-from boundary import Boundary
-from method.nonliear_fem import FEM
-from model.element.C3D8 import C3D8
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
+from src.model.node import Node
+from src.material.von_mises_brick import MisesMaterial
+from src.boundary import Boundary
+from src.method.nonliear_fem import FEM
+from src.model.element.C3D8 import C3D8
 
 # メインの処理
 def main():

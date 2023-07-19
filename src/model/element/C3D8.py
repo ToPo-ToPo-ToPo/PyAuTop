@@ -1,11 +1,14 @@
 #https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
+from os.path import dirname, abspath
 import sys
-sys.path.append('../../')
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
 import numpy as np
 import numpy.linalg as LA
-from material.dmatrix import Dmatrix
-from model.element.element_output_data import ElementOutputData
+from src.material.dmatrix import Dmatrix
+from src.model.element.element_output_data import ElementOutputData
 
 # 6面体8節点要素のクラス
 class C3D8:
