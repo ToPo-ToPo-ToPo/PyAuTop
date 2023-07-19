@@ -2,11 +2,11 @@
 
 import sys
 sys.path.append('../')
-from node import Node
+from model.node import Node
 from material.von_mises_brick import MisesMaterial
 from boundary import Boundary
-from fem import FEM
-from element.C3D8 import C3D8
+from method.nonliear_fem import FEM
+from model.element.C3D8 import C3D8
 
 # メインの処理
 def main():
@@ -64,7 +64,7 @@ def main():
     bound.addForce(16, 0.0, 0.0, -10000.0)
 
     # 解析を実行する
-    fem = FEM(nodes, elems, bound, 1)
+    fem = FEM(nodes, elems, bound, 10)
     fem.impAnalysis()
 
     # 結果を出力する

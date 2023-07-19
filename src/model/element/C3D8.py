@@ -1,12 +1,11 @@
 #https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
+import sys
+sys.path.append('../../')
 import numpy as np
 import numpy.linalg as LA
-
-import sys
-sys.path.append('../')
 from material.dmatrix import Dmatrix
-from element_output_data import ElementOutputData
+from model.element.element_output_data import ElementOutputData
 
 # 6面体8節点要素のクラス
 class C3D8:
