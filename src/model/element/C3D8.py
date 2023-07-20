@@ -20,8 +20,8 @@ class C3D8:
     def __init__(self, no, nodes, material):
 
         # インスタンス変数を定義する
-        self.num_node = 8                       # 節点の数
-        self.num_dof_at_node = 3                       # 節点の自由度
+        self.num_node = 8                      # 節点の数
+        self.num_dof_at_node = 3               # 節点の自由度
         self.no = no                           # 要素番号
         self.nodes = nodes                     # 節点の集合(Node型のリスト)
         self.material = []                     # 材料モデルのリスト
@@ -37,8 +37,6 @@ class C3D8:
         self.ci = np.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),   # 積分点の座標(a,b,c座標系, np.array型のリスト)
                             np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0)])
         
-        #self.incNo = 0   # インクリメントのNo
-
         # 要素内の変位を初期化する
         self.physical_field = np.zeros(self.num_node * self.num_dof_at_node)   # 要素内の変位
 
