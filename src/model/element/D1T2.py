@@ -1,8 +1,9 @@
 import numpy as np
 
+#=============================================================================
 # 1次元2節点トラス要素のクラス
+#=============================================================================
 class D1T2:
-
     # コンストラクタ
     # no         : 要素番号
     # nodes      : 節点のリスト(Node1d型のリスト)
@@ -19,8 +20,10 @@ class D1T2:
 
         # Bマトリクスを計算する
         self.matB = self.makeBmatrix()
-
+    
+    #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKetを作成する
+    #---------------------------------------------------------------------
     def makeKetmatrix(self):
 
         # dxdaを計算する
@@ -31,7 +34,9 @@ class D1T2:
 
         return matKet
 
+    #---------------------------------------------------------------------
     # Bマトリクスを作成する
+    #---------------------------------------------------------------------
     def makeBmatrix(self):
 
         # Bマトリクスを計算する
@@ -41,25 +46,28 @@ class D1T2:
 
         return matB
 
+    #---------------------------------------------------------------------
     # 構成則の情報を更新する
     # vecElemDisp : 要素節点の変位ベクトル(np.array型)
+    #---------------------------------------------------------------------
     def compute_constitutive_law(self, vecElemDisp):
 
         # 全ひずみを求める
         strain = np.array(self.matB @ vecElemDisp).flatten()
 
         # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
-        stress = self.mat.compute_stress_and_tangent_matrix(strain)
-        self.stress = stress
+        self.mat.compute_stress_and_tangent_matrix(strain)
 
-    # 内力ベクトルqを作成する
+    #---------------------------------------------------------------------
+    # 内力ベクトルFint_eを作成する
+    #---------------------------------------------------------------------
     def makeqVector(self):
 
         # dxdaを計算する
         dxda = -0.5 * self.nodes[0].x + 0.5 * self.nodes[1].x
 
         # 内力ベクトルqを計算する
-        vecq = np.array(self.area * self.w * self.matB.T @ self.stress * dxda).flatten()
+        vecq = np.array(self.area * self.w * self.matB.T @ self.mat.stress * dxda).flatten()
 
         return vecq
 
