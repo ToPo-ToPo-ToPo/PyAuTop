@@ -22,29 +22,29 @@ class LinearFEM:
         matK = self.makeKmatrix()
 
         # 荷重ベクトルを作成する
-        vecf = self.makeForceVector()
+        vecf = self.make_force_vector()
 
         # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
-        matKc, vecfc = self.setBoundCondition(matK, vecf)
+        matKc, vecfc = self.set_bound_condition(matK, vecf)
 
         if np.isclose(LA.det(matKc), 0.0) :
             raise ValueError("有限要素法の計算に失敗しました。")
 
         # 変位ベクトルを計算する
-        vecDisp = LA.solve(matKc, vecfc)
-        self.vecDisp = vecDisp
+        physical_field = LA.solve(matKc, vecfc)
+        self.physical_field = physical_field
 
         # 節点反力を計算する
-        vecRF = np.array(matK @ vecDisp - vecf).flatten()
+        vecRF = np.array(matK @ physical_field - vecf).flatten()
         self.vecRF = vecRF
 
-        return vecDisp, vecRF
+        return physical_field, vecRF
 
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
-    def makeForceVector(self):
+    def make_force_vector(self):
 
         # 節点に負荷する荷重ベクトルを作成する
-        vecCondiForce = self.bound.makeForceVector()
+        vecCondiForce = self.bound.make_force_vector()
 
         # 等価節点力の荷重ベクトルを作成する
         vecEqNodeForce = np.zeros(len(self.nodes) * self.nodeDof)
@@ -81,12 +81,12 @@ class LinearFEM:
     # matK         : 剛性マトリクス
     # vecf         : 荷重ベクトル
     # vecBoundDisp : 節点の境界条件の変位ベクトル
-    # vecDisp      : 全節点の変位ベクトル(np.array型)
-    def setBoundCondition(self, matKt, vecf):
+    # physical_field      : 全節点の変位ベクトル(np.array型)
+    def set_bound_condition(self, matKt, vecf):
 
         matKtc = np.copy(matKt)
         vecfc = np.copy(vecf)
-        vecBoundDisp = self.bound.makeDispVector()
+        vecBoundDisp = self.bound.make_disp_vector()
 
         # 単点拘束条件を考慮したKマトリクス、荷重ベクトルを作成する
         for i in range(len(vecBoundDisp)):
@@ -109,7 +109,7 @@ class LinearFEM:
         return matKtc, vecfc
 
     # 解析結果をテキストファイルに出力する
-    def outputTxt(self, filePath):
+    def output_txt(self, filePath):
 
         # ファイルを作成し、開く
         f = open(filePath + ".txt", 'w')
@@ -163,7 +163,7 @@ class LinearFEM:
         f.write("***** SPC Constraint Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Displacement".rjust(columNum) + "Y Displacement".rjust(columNum) + "Z Displacement".rjust(columNum) +"\n")
         f.write("-" * columNum * 4 + "\n")
-        vecd = self.bound.makeDispVector()
+        vecd = self.bound.make_disp_vector()
         for i in range(len(self.nodes)):
             flg = False
             for j in range(self.nodeDof):
@@ -181,7 +181,7 @@ class LinearFEM:
         f.write("***** Nodal Force Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + "Z Force".rjust(columNum) +"\n")
         f.write("-" * columNum * 4 + "\n")
-        vecf = self.makeForceVector()
+        vecf = self.make_force_vector()
         for i in range(len(self.nodes)):
             flg = False
             for j in range(self.nodeDof):
@@ -208,11 +208,11 @@ class LinearFEM:
         f.write("-" * columNum * 5 + "\n")
         for i in range(len(self.nodes)):
             strNo = str(i + 1).rjust(columNum)
-            mag = np.linalg.norm(np.array((self.vecDisp[self.nodeDof * i], self.vecDisp[self.nodeDof * i + 1], self.vecDisp[self.nodeDof * i + 2])))
+            mag = np.linalg.norm(np.array((self.physical_field[self.nodeDof * i], self.physical_field[self.nodeDof * i + 1], self.physical_field[self.nodeDof * i + 2])))
             strMag = str(format(mag, floatDigits).rjust(columNum))
-            strXDisp = str(format(self.vecDisp[self.nodeDof * i], floatDigits).rjust(columNum))
-            strYDisp = str(format(self.vecDisp[self.nodeDof * i + 1], floatDigits).rjust(columNum))
-            strZDisp = str(format(self.vecDisp[self.nodeDof * i + 2], floatDigits).rjust(columNum))
+            strXDisp = str(format(self.physical_field[self.nodeDof * i], floatDigits).rjust(columNum))
+            strYDisp = str(format(self.physical_field[self.nodeDof * i + 1], floatDigits).rjust(columNum))
+            strZDisp = str(format(self.physical_field[self.nodeDof * i + 2], floatDigits).rjust(columNum))
             f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
         f.write("\n")
 

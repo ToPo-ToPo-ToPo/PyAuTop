@@ -31,6 +31,7 @@ class C3D4:
         self.poisson = poisson         # ポアソン比
         self.density = density         # 密度
         self.vecGravity = vecGravity   # 重力加速度のベクトル(np.array型)
+        
         self.ipNum = 1                 # 積分点の数
         self.w = 1.0 / 6.0             # 積分点の重み係数
         self.ai = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
@@ -47,7 +48,7 @@ class C3D4:
         matB = self.makeBmatrix()
 
         # Dマトリクスを計算する
-        matD = self.makeDematrix()
+        matD = self.make_De_matrix()
 
         # Ketマトリクスをガウス積分で計算する
         matKet = self.w * matB.T @ matD @ matB * LA.det(matJ)
@@ -55,9 +56,9 @@ class C3D4:
         return matKet
 
     # Dマトリクスを作成する
-    def makeDematrix(self):
+    def make_De_matrix(self):
 
-        matD = Dmatrix(self.young, self.poisson).makeDematrix()
+        matD = Dmatrix(self.young, self.poisson).make_De_matrix()
         return matD
 
     # ヤコビ行列を計算する

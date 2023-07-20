@@ -12,7 +12,7 @@ class Dmatrix:
         self.poisson = poisson
 
     # 弾性状態のDマトリクスを作成する
-    def makeDematrix(self):
+    def make_De_matrix(self):
 
         tmp = self.young / ((1.0 + self.poisson) * (1.0 - 2.0 * self.poisson))
         matD = np.array([[1.0 - self.poisson, self.poisson, self.poisson, 0.0, 0.0, 0.0],

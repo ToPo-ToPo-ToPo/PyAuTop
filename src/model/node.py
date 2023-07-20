@@ -15,5 +15,5 @@ class Node:
         self.z = z     # z座標
     
     # 節点の情報を表示する
-    def printNode(self):
+    def print_node(self):
         print("Node No: %d, x: %f, y: %f, z: %f" % (self.no, self.x, self.y, self.z))

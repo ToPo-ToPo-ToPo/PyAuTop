@@ -14,11 +14,11 @@ class ElastoPlasticVonMisesTruss:
         self.D = young          # 接線剛性
         self.stressLine = []    # 応力-塑性ひずみ多直線の応力データ
         self.pStrainLine = []   # 応力-塑性ひずみ多直線の塑性ひずみデータ
-        self.yeildFlg = False   # 要素が降伏しているか判定するフラグ
+        self.yieldFlg = False   # 要素が降伏しているか判定するフラグ
         self.pStrain = 0.0      # 要素内の塑性ひずみ
         self.stress = 0.0       # 要素内の応力
 
-        self.itrNum = 100       # ニュートン・ラプソン法の収束回数の上限
+        self.itr_max = 100       # ニュートン・ラプソン法の収束回数の上限
         self.tol = 0.001        # ニュートン・ラプソン法の収束基準
 
     #---------------------------------------------------------------------
@@ -35,26 +35,26 @@ class ElastoPlasticVonMisesTruss:
         triStress = self.young * triStrain
 
         # 降伏関数を計算する
-        triF = self.yieldFunction(triStress, np.abs(prevPStrain))
+        triF = self.yield_function(triStress, np.abs(prevPStrain))
 
         # 降伏判定を計算する
         if triF > 0.0:
-            self.yeildFlg = True
+            self.yieldFlg = True
         else:
-            self.yeildFlg = False
+            self.yieldFlg = False
 
         # 塑性乗数の増分Δγをニュートン・ラプソン法で計算する
         deltaGamma = 0.0
-        if self.yeildFlg == True:
-            kn = self.makeYeildStress(prevPStrain)
+        if self.yieldFlg == True:
+            kn = self.make_yield_stress(prevPStrain)
             
             # 収束演算を行う
-            for i in range(self.itrNum):
+            for i in range(self.itr_max):
                 
                 # y, y'を計算する
-                k = self.makeYeildStress(prevPStrain + deltaGamma)
+                k = self.make_yield_stress(prevPStrain + deltaGamma)
                 
-                hDash = self.makePlasticModule(prevPStrain + deltaGamma)
+                hDash = self.make_plastic_module(prevPStrain + deltaGamma)
                 
                 y = triF - self.young * deltaGamma - k + kn
                 
@@ -77,11 +77,11 @@ class ElastoPlasticVonMisesTruss:
 
         # 接線剛性を計算する
         # 弾性状態の場合
-        if self.yeildFlg == False:
+        if self.yieldFlg == False:
             self.D = self.young
         # 塑性状態の場合
         else:
-            hDash = self.makePlasticModule(self.pStrain)
+            hDash = self.make_plastic_module(self.pStrain)
             self.D = self.young * hDash / (self.young + hDash)
 
     #---------------------------------------------------------------------
@@ -89,11 +89,11 @@ class ElastoPlasticVonMisesTruss:
     # stress  : 応力
     # pStrain : 塑性ひずみ
     #---------------------------------------------------------------------
-    def yieldFunction(self, stress, pStrain):
+    def yield_function(self, stress, pStrain):
 
         f = 0.0
         if hasattr(self, 'yieldStress'):
-            f = np.abs(stress) - self.makeYeildStress(pStrain)
+            f = np.abs(stress) - self.make_yield_stress(pStrain)
 
         return f
 
@@ -101,9 +101,9 @@ class ElastoPlasticVonMisesTruss:
     # 降伏応力を求める
     # pStrain : 塑性ひずみ
     #---------------------------------------------------------------------
-    def makeYeildStress(self, pStrain):
+    def make_yield_stress(self, pStrain):
 
-        yeildStress = 0.0
+        yieldStress = 0.0
         if hasattr(self, 'yieldStress'):
             # pStrainが何番目のデータの間か求める
             no = None
@@ -115,10 +115,10 @@ class ElastoPlasticVonMisesTruss:
             if no is None :
                 raise ValueError("塑性ひずみが定義した範囲を超えています。")
 
-            hDash = self.makePlasticModule(pStrain)
-            yeildStress = hDash * (np.abs(pStrain) - self.pStrainLine[no]) + self.stressLine[no]
+            hDash = self.make_plastic_module(pStrain)
+            yieldStress = hDash * (np.abs(pStrain) - self.pStrainLine[no]) + self.stressLine[no]
 
-        return yeildStress
+        return yieldStress
 
     #---------------------------------------------------------------------
     # 応力-塑性ひずみ多直線のデータを追加する
@@ -127,7 +127,7 @@ class ElastoPlasticVonMisesTruss:
     # stress  : 応力(正の前提)
     # pStrain : 塑性ひずみ(正の前提)
     #---------------------------------------------------------------------
-    def addStressPStrainLine(self, stress, pStrain):
+    def add_stress_plastic_strain_line(self, stress, pStrain):
 
         # 入力チェック
         if len(self.pStrainLine) == 0:
@@ -147,7 +147,7 @@ class ElastoPlasticVonMisesTruss:
     # 塑性係数を求める
     # pStrain : 塑性ひずみ
     #---------------------------------------------------------------------
-    def makePlasticModule(self, pStrain):
+    def make_plastic_module(self, pStrain):
 
         # pStrainが何番目のデータの間か求める
         no = None

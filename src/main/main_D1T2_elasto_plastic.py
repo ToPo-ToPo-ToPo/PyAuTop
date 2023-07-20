@@ -11,7 +11,9 @@ from src.boundary_1d import Boundary1d
 from src.method.nonlinear_fem_1d import FEM1d
 from src.model.element.D1T2 import D1T2
 
+#=============================================================================
 # メインの処理
+#=============================================================================
 def main():
     # 節点を定義する
     node1 = Node1d(1, 0.0)
@@ -24,12 +26,12 @@ def main():
     # 材料情報を定義する
     young = 210e+03
     mat = ElastoPlasticVonMisesTruss(young)
-    mat.addStressPStrainLine(200e3, 0.0)
-    mat.addStressPStrainLine(250e3, 0.2)
-    mat.addStressPStrainLine(290e3, 0.4)
-    mat.addStressPStrainLine(320e3, 0.6)
-    mat.addStressPStrainLine(340e3, 0.8)
-    mat.addStressPStrainLine(350e3, 1.0)
+    mat.add_stress_plastic_strain_line(200e+03, 0.0)
+    mat.add_stress_plastic_strain_line(250e+03, 0.2)
+    mat.add_stress_plastic_strain_line(290e+03, 0.4)
+    mat.add_stress_plastic_strain_line(320e+03, 0.6)
+    mat.add_stress_plastic_strain_line(340e+03, 0.8)
+    mat.add_stress_plastic_strain_line(350e+03, 1.0)
 
     # 要素を定義する
     area = 1.0
@@ -38,12 +40,16 @@ def main():
 
     # 境界条件を定義する
     bound = Boundary1d(len(nodes))
-    bound.addSPC(1, 0.0)
-    bound.addForce(2, 345e3)
+    bound.add_SPC(1, 0.0)
+    bound.add_force(2, 345e+03)
 
     # 解析を行う
     fem = FEM1d(nodes, elems, bound, 10)
     fem.analysis()
-    fem.outputTxt("../../output/D1T2_test")  
+    fem.output_txt("../../output/D1T2_test")  
 
-main()
+#=============================================================================
+#
+#=============================================================================
+if __name__ == '__main__':
+    main()

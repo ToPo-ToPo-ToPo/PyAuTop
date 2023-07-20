@@ -40,7 +40,7 @@ class C3D8:
         #self.incNo = 0   # インクリメントのNo
 
         # 要素内の変位を初期化する
-        self.vecDisp = np.zeros(self.nodeNum * self.nodeDof)   # 要素内の変位
+        self.physical_field = np.zeros(self.nodeNum * self.nodeDof)   # 要素内の変位
 
         # 材料モデルを初期化する
         for ip in range(self.ipNum):
@@ -251,9 +251,9 @@ class C3D8:
 
 
     # 要素内の変数を更新する
-    # vecDisp : 要素節点の変位ベクトル(np.array型)
+    # physical_field : 要素節点の変位ベクトル(np.array型)
     # incNo   : インクリメントNo
-    def update(self, vecDisp, incNo):
+    def update(self, physical_field, incNo):
         
         # 積分点ループ
         for i in range(self.ipNum):
@@ -262,10 +262,10 @@ class C3D8:
             matBbar = self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i])
             
             # 構成則の内部変数の更新
-            self.material[i].update(matBbar, vecDisp, incNo)
+            self.material[i].update(matBbar, physical_field, incNo)
         
         # 要素内変位の更新
-        self.vecDisp = vecDisp
+        self.physical_field = physical_field
         #self.incNo = incNo
 
 

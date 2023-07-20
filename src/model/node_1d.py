@@ -8,5 +8,5 @@ class Node1d:
         self.x = x     # x座標
 
     # 節点の情報を表示する
-    def printNode(self):
+    def print_node(self):
         print("Node No: %d, x: %f" % (self.no, self.x))

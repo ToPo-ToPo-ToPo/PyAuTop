@@ -16,13 +16,14 @@ class FEM1d:
     # nodes    : 節点リスト(節点は1から始まる順番で並んでいる前提(Node1d型のリスト))
     # elements : 要素のリスト(d1t2型のリスト)
     # boundary : 境界条件(d1Boundary型)
-    # incNum   : インクリメント数
-    def __init__(self, nodes, elements, boundary, incNum):
+    # num_step   : インクリメント数
+    def __init__(self, nodes, elements, boundary, num_step):
+
         self.nodes = nodes         # 節点は1から始まる順番で並んでいる前提(Node1d型のリスト)
         self.elements = elements   # 要素のリスト(d1t2型のリスト)
         self.bound = boundary      # 境界条件(d1Boundary型)
-        self.incNum = incNum       # インクリメント数
-        self.itrNum = 100          # ニュートン法のイテレータの上限
+        self.num_step = num_step   # インクリメント数
+        self.itr_max = 100         # ニュートン法のイテレータの上限
         self.cn = 0.001            # ニュートン法の変位の収束判定のパラメータ
 
     #---------------------------------------------------------------------
@@ -30,38 +31,38 @@ class FEM1d:
     #---------------------------------------------------------------------
     def analysis(self):
 
-        self.vecDispList = []          # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
-        self.vecRFList = []            # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
-        self.elemOutputDataList = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
+        self.physical_field_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.Freact_list = []             # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
+        self.elem_output_data_list = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
 
         # 荷重をインクリメント毎に分割する
-        vecfList = []
-        for i in range(self.incNum):
-            vecfList.append(self.makeForceVector() * (i + 1) / self.incNum)
+        Fext_list = []
+        for i in range(self.num_step):
+            Fext_list.append(self.make_force_vector() * (i + 1) / self.num_step)
 
         # ニュートン法により変位を求める
-        vecDisp = np.zeros(len(self.nodes))   # 全節点の変位ベクトル
-        R = np.zeros(len(self.nodes))         # 残差力ベクトル
+        physical_field = np.zeros(len(self.nodes))   # 全節点の変位ベクトル
+        R = np.zeros(len(self.nodes))                # 残差力ベクトル
         
         # 増分解析ループ
-        for i in range(self.incNum):
-            vecDispFirst = vecDisp   # 初期の全節点の変位ベクトル
-            Fext = vecfList[i]       # i+1番インクリメントの荷重
+        for i in range(self.num_step):
+            physical_field_first = physical_field   # 初期の全節点の変位ベクトル
+            Fext = Fext_list[i]                     # i+1番インクリメントの荷重
 
             # 境界条件を考慮しないインクリメント初期の接線剛性マトリクスKtを作成する
-            Kt = self.makeKtmatrix()
+            Kt = self.make_Kt()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
             if i == 0:
                 R = Fext
             else:
-                R = Fext - vecfList[i - 1]
+                R = Fext - Fext_list[i - 1]
 
             # 境界条件を考慮したインクリメント初期の接線剛性マトリクスKtc、残差力ベクトルRcを作成する
-            Ktc, Rc = self.setBoundCondition(Kt, R)
+            Ktc, Rc = self.set_bound_condition(Kt, R)
 
             # ニュートン法による収束演算を行う
-            for j in range(self.itrNum):
+            for j in range(self.itr_max):
 
                 # Ktcの逆行列が計算できるかチェックする
                 if np.isclose(LA.det(Ktc), 0.0) :
@@ -71,20 +72,20 @@ class FEM1d:
                 vecd = LA.solve(Ktc, Rc)
 
                 # 変位ベクトルの更新: u_new = u_old + Δu
-                vecDisp += vecd
+                physical_field += vecd
 
                 # 要素内の情報を更新する
-                self.update_element_data(vecDisp)
+                self.update_element_data(physical_field)
 
                 # 新たな接線剛性マトリクスKtを作成する
-                Kt = self.makeKtmatrix()
+                Kt = self.make_Kt()
 
                 # 新たな残差力ベクトルRを求める
-                Fint = self.makeFint()
+                Fint = self.make_Fint()
                 R = Fext - Fint
 
                 # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                Ktc, Rc = self.setBoundCondition(Kt, R)
+                Ktc, Rc = self.set_bound_condition(Kt, R)
 
                 # 収束判定を行う
                 # 増分変位ノルム|Δu|=0であれば収束
@@ -93,51 +94,51 @@ class FEM1d:
 
                 else:
                     # 増分変位ノルム|Δu|の変化率が微小であれば収束
-                    dispRate = (LA.norm(vecd) / LA.norm(vecDisp - vecDispFirst))
-                    if dispRate < self.cn:
+                    physical_field_rate = (LA.norm(vecd) / LA.norm(physical_field - physical_field_first))
+                    if physical_field_rate < self.cn:
                         break
 
             # 収束後のインクリメントの変位べクトルを格納する
-            self.vecDispList.append(vecDisp.copy()) 
+            self.physical_field_list.append(physical_field.copy()) 
 
             # 収束後の節点反力を計算する
             vecRF = np.array(Fint - Fext).flatten()
 
             # 収束後のインクリメントの節点反力を格納する
-            self.vecRFList.append(vecRF)
+            self.Freact_list.append(vecRF)
 
     #---------------------------------------------------------------------
     # 結果を整理し、要素情報を更新する
-    # vecDisp : 全節点の変位ベクトル(np.array型)
+    # physical_field : 全節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
-    def update_element_data(self, vecDisp):
+    def update_element_data(self, physical_field):
 
         # 全要素ループ
         for elem in self.elements:
             
             # 要素elemの変位を初期化
-            vecElemDisp = np.zeros(len(elem.nodes))
+            elem_physical_field = np.zeros(len(elem.nodes))
             
             # 要素変位の更新
             for i in range(len(elem.nodes)):
-                vecElemDisp[i] = vecDisp[(elem.nodes[i].no - 1)]
+                elem_physical_field[i] = physical_field[(elem.nodes[i].no - 1)]
             
             # 構成則内の変数を更新
-            elem.compute_constitutive_law(vecElemDisp)        
+            elem.compute_constitutive_law(elem_physical_field)        
 
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
     #---------------------------------------------------------------------
-    def makeKtmatrix(self):
+    def make_Kt(self):
 
         # 初期化
-        matKt = np.matrix(np.zeros((len(self.nodes), len(self.nodes))))
+        Kt = np.matrix(np.zeros((len(self.nodes), len(self.nodes))))
         
         # 全要素ループ
         for elem in self.elements:
 
             # ketマトリクスを計算する
-            matKet = elem.makeKetmatrix()
+            Ke = elem.make_local_Kt()
 
             # Ktマトリクスに代入する
             for c in range(len(elem.nodes)):
@@ -151,14 +152,14 @@ class FEM1d:
                     rt = (elem.nodes[r].no - 1)
 
                     # アセンブリング
-                    matKt[ct, rt] += matKet[c, r]
+                    Kt[ct, rt] += Ke[c, r]
 
-        return matKt
+        return Kt
     
     #---------------------------------------------------------------------
-    # 内力ベクトルvecQを作成する
+    # 内力ベクトルFintを作成する
     #---------------------------------------------------------------------
-    def makeFint(self):
+    def make_Fint(self):
 
         # 初期化
         Fint = np.zeros(len(self.nodes))
@@ -167,7 +168,7 @@ class FEM1d:
         for elem in self.elements:
             
             # 要素内力ベクトルFint_eの作成
-            Fe = elem.makeqVector()
+            Fe = elem.make_local_Fint()
             
             # アセンブリングによる全体内力ベクトルFintを作成
             for k in range(len(elem.nodes)):
@@ -178,45 +179,51 @@ class FEM1d:
     #---------------------------------------------------------------------
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
     #---------------------------------------------------------------------
-    def makeForceVector(self):
+    def make_force_vector(self):
 
         # 節点に負荷する荷重ベクトルを作成する
-        vecf = self.bound.makeForceVector()
+        vecf = self.bound.make_force_vector()
 
         return vecf
 
     #---------------------------------------------------------------------
     # 接線剛性マトリクス、残差力ベクトルに境界条件を考慮する
     #---------------------------------------------------------------------
-    def setBoundCondition(self, matKt, vecR):
+    def set_bound_condition(self, Kt, R):
 
-        matKtc = np.copy(matKt)
-        vecRc = np.copy(vecR)
+        # 初期化
+        Ktc = np.copy(Kt)
+        Rc = np.copy(R)
+
+        # 強制変位ベクトルを取得
+        physical_field = self.bound.make_disp_vector()
 
         # 単点拘束条件を考慮した接線剛性マトリクス、残差力ベクトルを作成する
-        vecDisp = self.bound.makeDispVector()
-        for i in range(len(vecDisp)):
-            if not vecDisp[i] == None:
+        for idof in range(len(physical_field)):    
+            if not physical_field[idof] == None:
+
                 # Ktマトリクスからi列を抽出する
-                vecx = np.array(matKt[:, i]).flatten()
+                vecx = np.array(Kt[:, idof]).flatten()
 
                 # 変位ベクトルi列の影響を荷重ベクトルに適用する
-                vecRc = vecRc - vecDisp[i] * vecx
+                Rc = Rc - physical_field[idof] * vecx
 
                 # Ktマトリクスのi行、i列を全て0にし、i行i列の値を1にする
-                matKtc[:, i] = 0.0
-                matKtc[i, :] = 0.0
-                matKtc[i, i] = 1.0
-        for i in range(len(vecDisp)):
-            if not vecDisp[i] == None:
-                vecRc[i] = vecDisp[i]
+                Ktc[:, idof] = 0.0
+                Ktc[idof, :] = 0.0
+                Ktc[idof, idof] = 1.0
+        
+        # 強制変位量を方程式の右辺へ格納する
+        for idof in range(len(physical_field)):
+            if not physical_field[idof] == None:
+                Rc[idof] = physical_field[idof]
 
-        return matKtc, vecRc
+        return Ktc, Rc
 
     #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
     #---------------------------------------------------------------------
-    def outputTxt(self, filePath):
+    def output_txt(self, filePath):
 
         # ファイルを作成し、開く
         f = open(filePath + ".txt", 'w')
@@ -242,7 +249,7 @@ class FEM1d:
         f.write("\n")
 
         # 要素情報を出力する
-        nodeNoColumNum = columNum
+        '''nodeNoColumNum = columNum
         f.write("***** Element Data ******\n")
         f.write("No".rjust(columNum) + "Type".rjust(columNum) + "Node No".rjust(nodeNoColumNum) + 
                 "Young".rjust(columNum) + "Area".rjust(columNum) + "\n")
@@ -257,10 +264,10 @@ class FEM1d:
             strYoung = str(format(elem.mat.young, floatDigits).rjust(columNum))
             strArea = str(format(elem.area, floatDigits).rjust(columNum))
             f.write(strNo + strType + strNodeNo + strYoung + strArea + "\n")
-        f.write("\n")
+        f.write("\n")'''
 
         # 単点拘束情報を出力する
-        f.write("***** SPC Constraint Data ******\n")
+        '''f.write("***** SPC Constraint Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Displacement".rjust(columNum) + "\n")
         f.write("-" * columNum * 2 + "\n")
         for i in range(len(self.bound.dispNodeNo)):
@@ -269,13 +276,13 @@ class FEM1d:
             if not self.bound.dispX[i] is None:
                 strXDisp = str(format(self.bound.dispX[i], floatDigits).rjust(columNum))
             f.write(strNo + strXDisp + "\n")
-        f.write("\n")
+        f.write("\n")'''
 
         # 荷重条件を出力する(等価節点力も含む)
         f.write("***** Nodal Force Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Force".rjust(columNum) + "\n")
         f.write("-" * columNum * 2 + "\n")
-        vecf = self.makeForceVector()
+        vecf = self.make_force_vector()
         for i in range(len(self.nodes)):
             if not vecf[i] == 0 :
                 strNo = str(i + 1).rjust(columNum)
@@ -289,7 +296,7 @@ class FEM1d:
         f.write("**********************************\n")
         f.write("\n")
 
-        for i in range(self.incNum):
+        for i in range(self.num_step):
             f.write("*Increment " + str(i + 1) + "\n")
             f.write("\n")
 
@@ -299,8 +306,8 @@ class FEM1d:
             f.write("-" * columNum * 2 + "\n")
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
-                vecDisp = self.vecDispList[i]
-                strXDisp = str(format(vecDisp[j], floatDigits).rjust(columNum))
+                physical_field = self.physical_field_list[i]
+                strXDisp = str(format(physical_field[j], floatDigits).rjust(columNum))
                 f.write(strNo + strXDisp + "\n")            
             f.write("\n")
 
@@ -310,7 +317,7 @@ class FEM1d:
             f.write("-" * columNum * 2 + "\n")
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
-                vecRF = self.vecRFList[i]
+                vecRF = self.Freact_list[i]
                 strXForce = str(format(vecRF[j], floatDigits).rjust(columNum))
                 f.write(strNo + strXForce + "\n")            
             f.write("\n")

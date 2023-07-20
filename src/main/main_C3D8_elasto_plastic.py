@@ -45,10 +45,10 @@ def main():
     density = 7850
     mat = ElastoPlasticVonMisesSolid(young, poisson, density)
     # 塑性硬化の条件を設定
-    mat.addStressPStrainLine(400000, 0.0)
-    mat.addStressPStrainLine(500000, 0.5)
-    mat.addStressPStrainLine(600000, 0.7)
-    mat.addStressPStrainLine(700000, 1.0)
+    mat.add_stress_plastic_strain_line(400000, 0.0)
+    mat.add_stress_plastic_strain_line(500000, 0.5)
+    mat.add_stress_plastic_strain_line(600000, 0.7)
+    mat.add_stress_plastic_strain_line(700000, 1.0)
 
     # 要素リストを定義する
     elem1 = C3D8(1, nodes1, mat)
@@ -58,21 +58,21 @@ def main():
 
     # 境界条件を定義する
     bound = Boundary(len(nodes))
-    bound.addSPC(1, 0.0, 0.0, 0.0)
-    bound.addSPC(5, 0.0, 0.0, 0.0)
-    bound.addSPC(9, 0.0, 0.0, 0.0)
-    bound.addSPC(13, 0.0, 0.0, 0.0)
-    bound.addForce(4, 0.0, 0.0, -10000.0)
-    bound.addForce(8, 0.0, 0.0, -10000.0)
-    bound.addForce(12, 0.0, 0.0, -10000.0)
-    bound.addForce(16, 0.0, 0.0, -10000.0)
+    bound.add_SPC(1, 0.0, 0.0, 0.0)
+    bound.add_SPC(5, 0.0, 0.0, 0.0)
+    bound.add_SPC(9, 0.0, 0.0, 0.0)
+    bound.add_SPC(13, 0.0, 0.0, 0.0)
+    bound.add_force(4, 0.0, 0.0, -10000.0)
+    bound.add_force(8, 0.0, 0.0, -10000.0)
+    bound.add_force(12, 0.0, 0.0, -10000.0)
+    bound.add_force(16, 0.0, 0.0, -10000.0)
 
     # 解析を実行する
     fem = NonlinearFEM(nodes, elems, bound, 1)
     fem.analysis()
 
     # 結果を出力する
-    fem.outputTxt("../../output/C3D8_test")
+    fem.output_txt("../../output/C3D8_test")
 
 if __name__ == '__main__':
     main()
