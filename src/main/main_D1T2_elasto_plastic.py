@@ -17,12 +17,13 @@ def main():
     node1 = Node1d(1, 0.0)
     node2 = Node1d(2, 100.0)
     nodes = [node1, node2]
+
+    # 要素のコネクティビティの定義
     nodes1 = [node1, node2]
 
     # 材料情報を定義する
-    area = 1.0
     young = 210e+03
-    mat = ElastoPlasticVonMisesTruss(young, area)
+    mat = ElastoPlasticVonMisesTruss(young)
     mat.addStressPStrainLine(200e3, 0.0)
     mat.addStressPStrainLine(250e3, 0.2)
     mat.addStressPStrainLine(290e3, 0.4)
@@ -31,7 +32,8 @@ def main():
     mat.addStressPStrainLine(350e3, 1.0)
 
     # 要素を定義する
-    elem1 = D1T2(1, nodes1, mat)
+    area = 1.0
+    elem1 = D1T2(1, nodes1, mat, area)
     elems = [elem1]
 
     # 境界条件を定義する
@@ -41,7 +43,7 @@ def main():
 
     # 解析を行う
     fem = FEM1d(nodes, elems, bound, 10)
-    fem.impAnalysis()
+    fem.analysis()
     fem.outputTxt("../../output/D1T2_test")  
 
 main()

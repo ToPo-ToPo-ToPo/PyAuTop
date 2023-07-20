@@ -7,17 +7,15 @@ class D1T2:
     # no         : 要素番号
     # nodes      : 節点のリスト(Node1d型のリスト)
     # material   : 材料特性(Material型)
-    def __init__(self, no, nodes, material):
+    def __init__(self, no, nodes, material, area):
 
         # インスタンス変数を定義する
         self.no = no                  # 要素番号
         self.nodes = nodes            # 節点のリスト(Node1d型のリスト形式)
         self.mat = material           # 材料データ(Material型)
-        self.area = material.area     # 断面積
-        self.young = material.young   # ヤング率
+        self.area = area              # 断面積
         self.ipNum = 1                # 積分点の数
         self.w = 2.0                  # 積分点の重み係数
-        self.yeildFlg = False         # 要素が降伏しているか判定するフラグ
         self.pStrain = 0.0            # 要素内の塑性ひずみ
         self.stress = 0.0             # 要素内の応力
 
@@ -31,14 +29,14 @@ class D1T2:
         dxda = -0.5 * self.nodes[0].x + 0.5 * self.nodes[1].x
 
         # 降伏状態を判定し、Dを作成する
-        if self.yeildFlg == False:
-            D = self.young
-        else:
-            hDash = self.mat.makePlasticModule(self.pStrain)
-            D = self.young * hDash / (self.young + hDash)
+        #if self.yeildFlg == False:
+        #    D = self.mat.young
+        #else:
+        #    hDash = self.mat.makePlasticModule(self.pStrain)
+        #    D = self.mat.young * hDash / (self.mat.young + hDash)
 
         # 要素接線剛性マトリクスKetを計算する
-        matKet = self.area * self.w * self.matB.T * D * self.matB * dxda
+        matKet = self.area * self.w * self.matB.T * self.mat.D * self.matB * dxda
 
         return matKet
 
@@ -60,10 +58,9 @@ class D1T2:
         strain = np.array(self.matB @ vecElemDisp).flatten()
 
         # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
-        stress, pStrain, yieldFlg = self.mat.returnMapping(strain, self.pStrain)
+        stress, pStrain = self.mat.returnMapping(strain, self.pStrain)
         self.stress = stress
         self.pStrain = pStrain
-        self.yeildFlg = yieldFlg
 
     # 内力ベクトルqを作成する
     def makeqVector(self):

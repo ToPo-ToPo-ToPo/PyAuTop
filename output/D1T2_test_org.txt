@@ -103,7 +103,7 @@
               NodeNo      X Displacement
 ----------------------------------------
                    1                   0
-                   2         101.3714284
+                   2         101.3714286
 
 ***** Reaction Force Data ******
               NodeNo             X Force
@@ -117,7 +117,7 @@
               NodeNo      X Displacement
 ----------------------------------------
                    1                   0
-                   2         131.5999998
+                   2               131.6
 
 ***** Reaction Force Data ******
               NodeNo             X Force
@@ -131,7 +131,7 @@
               NodeNo      X Displacement
 ----------------------------------------
                    1                   0
-                   2          164.428571
+                   2         164.4285714
 
 ***** Reaction Force Data ******
               NodeNo             X Force
@@ -145,13 +145,13 @@
               NodeNo      X Displacement
 ----------------------------------------
                    1                   0
-                   2         201.5238091
+                   2         201.5238095
 
 ***** Reaction Force Data ******
               NodeNo             X Force
 ----------------------------------------
                    1             -310500
-                   2                   0
+                   2    -1.746229827e-10
 
 *Increment 10
 
@@ -159,7 +159,7 @@
               NodeNo      X Displacement
 ----------------------------------------
                    1                   0
-                   2         254.2857123
+                   2         254.2857143
 
 ***** Reaction Force Data ******
               NodeNo             X Force

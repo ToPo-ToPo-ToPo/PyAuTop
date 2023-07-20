@@ -6,14 +6,15 @@ class ElastoPlasticVonMisesTruss:
 
     # コンストラクタ
     # young    : ヤング率
-    # area     : 面積
-    def __init__(self, young, area):
+    def __init__(self, young):
 
         # インスタンス変数を定義する
         self.young = young      # ヤング率
-        self.area = area        # 面積
+        self.D = young
         self.stressLine = []    # 応力-塑性ひずみ多直線の応力データ
         self.pStrainLine = []   # 応力-塑性ひずみ多直線の塑性ひずみデータ
+        self.yeildFlg = False   # 要素が降伏しているか判定するフラグ
+
         self.itrNum = 100       # ニュートン・ラプソン法の収束回数の上限
         self.tol = 0.001        # ニュートン・ラプソン法の収束基準
 
@@ -133,4 +134,11 @@ class ElastoPlasticVonMisesTruss:
         # 応力を計算する
         stress = triStress - self.young * deltaPStrain
 
-        return stress, pStrain, yeildFlg
+        # 接線を計算する
+        if self.yeildFlg == False:
+            self.D = self.young
+        else:
+            hDash = self.makePlasticModule(pStrain)
+            self.D = self.young * hDash / (self.young + hDash)
+
+        return stress, pStrain

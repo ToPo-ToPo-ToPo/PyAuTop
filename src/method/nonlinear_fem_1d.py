@@ -23,7 +23,7 @@ class FEM1d:
         self.cn = 0.001            # ニュートン法の変位の収束判定のパラメータ
 
     # 陰解法で解析を行う
-    def impAnalysis(self):
+    def analysis(self):
 
         self.vecDispList = []          # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.vecRFList = []            # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
@@ -199,7 +199,7 @@ class FEM1d:
             for node in elem.nodes:
                 strNodeNo += " " + str(node.no)
             strNodeNo = strNodeNo.rjust(nodeNoColumNum)
-            strYoung = str(format(elem.young, floatDigits).rjust(columNum))
+            strYoung = str(format(elem.mat.young, floatDigits).rjust(columNum))
             strArea = str(format(elem.area, floatDigits).rjust(columNum))
             f.write(strNo + strType + strNodeNo + strYoung + strArea + "\n")
         f.write("\n")
