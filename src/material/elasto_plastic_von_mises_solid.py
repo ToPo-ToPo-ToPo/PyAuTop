@@ -5,7 +5,7 @@ import numpy.linalg as LA
 from material.dmatrix import Dmatrix
 
 # Misesモデルの構成則を計算するためのクラス
-class MisesMaterial:
+class ElastoPlasticVonMisesSolid:
     # コンストラクタ
     # young       : ヤング率
     # poisson     : ポアソン比

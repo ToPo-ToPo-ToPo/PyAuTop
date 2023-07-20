@@ -3,7 +3,7 @@
 import sys
 sys.path.append('../')
 from model.node import Node
-from material.von_mises_brick import MisesMaterial
+from material.elasto_plastic_von_mises_solid import ElastoPlasticVonMisesSolid
 from boundary import Boundary
 from method.nonliear_fem import NonlinearFEM
 from model.element.C3D8 import C3D8
@@ -39,7 +39,7 @@ def main():
     young = 210000.0
     poisson = 0.3
     density = 7850
-    mat = MisesMaterial(young, poisson, density)
+    mat = ElastoPlasticVonMisesSolid(young, poisson, density)
     # 塑性硬化の条件を設定
     mat.addStressPStrainLine(400000, 0.0)
     mat.addStressPStrainLine(500000, 0.5)
