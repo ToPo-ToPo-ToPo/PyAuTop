@@ -5,15 +5,15 @@ import numpy as np
 # 境界条件を格納するクラス
 class Boundary:
     # コンストラクタ
-    # nodeNum : 節点数
-    def __init__(self, nodeNum):
+    # num_node : 節点数
+    def __init__(self, num_node):
         # インスタンス変数を定義する
-        self.nodeNum = nodeNum                                     # 全節点数
-        self.nodeDof = 3                                           # 節点の自由度
-        self.physical_field = np.array(nodeNum * self.nodeDof * [None])   # 単点拘束の強制変位
-        self.vecForce = np.array(nodeNum * self.nodeDof * [0.0])   # 荷重ベクトル
+        self.num_node = num_node                                     # 全節点数
+        self.num_dof_at_node = 3                                           # 節点の自由度
+        self.physical_field = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
+        self.F = np.array(num_node * self.num_dof_at_node * [0.0])   # 荷重ベクトル
 
-        self.matC = np.empty((0, nodeNum * self.nodeDof))          # 多点拘束用のCマトリクス
+        self.matC = np.empty((0, num_node * self.num_dof_at_node))          # 多点拘束用のCマトリクス
         self.vecd = np.empty(0)                                    # 多点拘束用のdベクトル
 
     # 単点拘束を追加する
@@ -23,9 +23,9 @@ class Boundary:
     # dispZ  : z方向の強制変位
     def add_SPC(self, nodeNo, dispX, dispY, dispZ):
 
-        self.physical_field[self.nodeDof * (nodeNo - 1) + 0] = dispX
-        self.physical_field[self.nodeDof * (nodeNo - 1) + 1] = dispY
-        self.physical_field[self.nodeDof * (nodeNo - 1) + 2] = dispZ
+        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 0] = dispX
+        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 1] = dispY
+        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 2] = dispZ
 
     # 多点拘束を追加する
     # 条件式 : vecC x u = d
@@ -41,13 +41,13 @@ class Boundary:
     # 荷重を追加する
     def add_force(self, nodeNo, fx, fy, fz):
 
-        self.vecForce[self.nodeDof * (nodeNo - 1) + 0] = fx
-        self.vecForce[self.nodeDof * (nodeNo - 1) + 1] = fy
-        self.vecForce[self.nodeDof * (nodeNo - 1) + 2] = fz
+        self.F[self.num_dof_at_node * (nodeNo - 1) + 0] = fx
+        self.F[self.num_dof_at_node * (nodeNo - 1) + 1] = fy
+        self.F[self.num_dof_at_node * (nodeNo - 1) + 2] = fz
 
     # 境界条件から荷重ベクトルを作成する
     def make_force_vector(self):
-        return self.vecForce
+        return self.F
     
     # 多点拘束の境界条件を表すCマトリクス、dベクトルを作成する
     def makeMPCmatrixes(self):
@@ -55,11 +55,11 @@ class Boundary:
     
     # 拘束条件を出力する
     def print_boundary(self):
-        print("Node Number: ", self.nodeNum)
+        print("Node Number: ", self.num_node)
         print("SPC Constraint Condition")
         print(self.physical_field)
         print("Force Condition")
-        print(self.vecForce)
+        print(self.F)
         print("MPC Constraint Condition")
         print("C x u = d")
         print("C Matrix")

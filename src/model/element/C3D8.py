@@ -20,8 +20,8 @@ class C3D8:
     def __init__(self, no, nodes, material):
 
         # インスタンス変数を定義する
-        self.nodeNum = 8                       # 節点の数
-        self.nodeDof = 3                       # 節点の自由度
+        self.num_node = 8                       # 節点の数
+        self.num_dof_at_node = 3                       # 節点の自由度
         self.no = no                           # 要素番号
         self.nodes = nodes                     # 節点の集合(Node型のリスト)
         self.material = []                     # 材料モデルのリスト
@@ -40,7 +40,7 @@ class C3D8:
         #self.incNo = 0   # インクリメントのNo
 
         # 要素内の変位を初期化する
-        self.physical_field = np.zeros(self.nodeNum * self.nodeDof)   # 要素内の変位
+        self.physical_field = np.zeros(self.num_node * self.num_dof_at_node)   # 要素内の変位
 
         # 材料モデルを初期化する
         for ip in range(self.ipNum):
@@ -60,7 +60,7 @@ class C3D8:
             matBbar.append(self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i]))
 
         # Ketマトリクスをガウス積分で計算する
-        matKet = np.zeros([self.nodeDof * self.nodeNum, self.nodeDof * self.nodeNum])
+        matKet = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
         for i in range(self.ipNum):
             matKet += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].matD @ matBbar[i] * LA.det(matJ[i])
 
@@ -111,7 +111,7 @@ class C3D8:
 
         # Bマトリクスを計算する
         matB = np.empty((6,0))
-        for i in range(self.nodeNum): 
+        for i in range(self.num_node): 
             matTmp = np.array([[matdNdxyz[0, i], 0.0, 0.0],
                                [0.0, matdNdxyz[1, i], 0.0],
                                [0.0, 0.0, matdNdxyz[2, i]],
@@ -159,7 +159,7 @@ class C3D8:
 
         # Bvマトリクスを計算する
         matBv = np.empty((6,0))
-        for i in range(self.nodeNum):
+        for i in range(self.num_node):
             matTmp = np.array([[matdNdxyz[0, i], matdNdxyz[1, i], matdNdxyz[2, i]],
                                [matdNdxyz[0, i], matdNdxyz[1, i], matdNdxyz[2, i]],
                                [matdNdxyz[0, i], matdNdxyz[1, i], matdNdxyz[2, i]],
@@ -188,7 +188,7 @@ class C3D8:
             matJ.append(self.makeJmatrix(self.ai[i], self.bi[i], self.ci[i]))
 
         # ガウス積分でBvbarマトリクスを計算する
-        Bvbar = np.zeros([6, self.nodeNum * self.nodeDof])
+        Bvbar = np.zeros([6, self.num_node * self.num_dof_at_node])
         for i in range(self.ipNum):
             Bvbar += self.w1[i] * self.w2[i] * self.w3[i] * matBv[i] * LA.det(matJ[i])
         Bvbar *= 1.0 / v
@@ -283,7 +283,7 @@ class C3D8:
             matBbar.append(self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i]))
 
         # 内力ベクトルqを計算する
-        vecq = np.zeros(self.nodeDof * self.nodeNum)
+        vecq = np.zeros(self.num_dof_at_node * self.num_node)
         for i in range(self.ipNum):
             vecq += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].vecStressList * LA.det(matJ[i])
 

@@ -23,8 +23,8 @@ class C3D4:
     def __init__(self, no, nodes, young, poisson, density, vecGravity = None):
 
         # インスタンス変数を定義する
-        self.nodeNum = 4               # 節点の数
-        self.nodeDof = 3               # 節点の自由度
+        self.num_node = 4               # 節点の数
+        self.num_dof_at_node = 3               # 節点の自由度
         self.no = no                   # 要素番号
         self.nodes = nodes             # nodesは反時計回りの順番になっている前提(Node2d型のリスト形式)
         self.young = young             # ヤング率
@@ -128,10 +128,10 @@ class C3D4:
         # ヤコビ行列を計算する
         matJ = self.makeJmatrix()
 
-        vecEqNodeForce = np.zeros(self.nodeNum * self.nodeDof)
+        vecEqNodeForce = np.zeros(self.num_node * self.num_dof_at_node)
 
         # 物体力による等価節点力を計算する
-        vecBodyForce = np.zeros(self.nodeNum * self.nodeDof)
+        vecBodyForce = np.zeros(self.num_node * self.num_dof_at_node)
         if not self.vecGravity is None:
             vecb = self.density * self.vecGravity   # 単位体積あたりの物体力のベクトル
             N1 = 1 - self.ai - self.bi - self.ci

@@ -12,20 +12,20 @@ class NonlinearFEM:
     def __init__(self, nodes, elements, bound, num_step):
 
         # インスタンス変数を定義する
-        self.nodeDof = 3           # 節点の自由度
-        self.nodes = nodes         # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
-        self.elements = elements   # 要素は種類ごとにソートされている前提(リスト)
-        self.bound = bound         # 境界条件(d2Boundary型)
-        self.num_step = num_step       # インクリメント数
-        self.itr_max = 100          # ニュートン法のイテレータの上限
-        self.rn = 0.005            # ニュートン法の残差力の収束判定のパラメータ
-        self.cn = 0.01             # ニュートン法の変位の収束判定のパラメータ
+        self.num_dof_at_node = 3           # 節点の自由度
+        self.nodes = nodes                 # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
+        self.elements = elements           # 要素は種類ごとにソートされている前提(リスト)
+        self.bound = bound                 # 境界条件(d2Boundary型)
+        self.num_step = num_step           # インクリメント数
+        self.itr_max = 100                 # ニュートン法のイテレータの上限
+        self.rn = 0.005                    # ニュートン法の残差力の収束判定のパラメータ
+        self.cn = 0.01                     # ニュートン法の変位の収束判定のパラメータ
 
     # 陰解法で解析を行う
     def analysis(self):
 
-        self.physical_field_list = []          # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
-        self.Freact_list = []            # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
+        self.physical_field_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.Freact_list = []             # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
         self.elem_output_data_list = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
 
         # 荷重をインクリメント毎に分割する
@@ -34,8 +34,8 @@ class NonlinearFEM:
             Fext_list.append(self.make_force_vector() * (i + 1) / self.num_step)
 
         # ニュートン法により変位を求める
-        physical_field = np.zeros(len(self.nodes) * self.nodeDof)   # 全節点の変位ベクトル
-        vecR = np.zeros(len(self.nodes) * self.nodeDof)      # 残差力ベクトル
+        physical_field = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
+        vecR = np.zeros(len(self.nodes) * self.num_dof_at_node)             # 残差力ベクトル
         
         # 増分解析ループ
         for i in range(self.num_step):
@@ -45,8 +45,11 @@ class NonlinearFEM:
             print('============================================================')
 
             physical_field_first = physical_field.copy()   # 初期の全節点の変位ベクトル
-            vecf = Fext_list[i]              # i+1番インクリメントの荷重
+            vecf = Fext_list[i]                            # i+1番インクリメントの荷重
             vecBoundDisp = self.bound.make_disp_vector()
+
+            # 接線剛性マトリクスKtを作成する
+            matKt = self.makeKtmatrix()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
             if i == 0:
@@ -54,42 +57,38 @@ class NonlinearFEM:
             else:
                 vecR = Fext_list[i] - Fext_list[i - 1]
 
+            # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
+            matKtc, vecRc = self.set_bound_condition(matKt, vecR, vecBoundDisp, physical_field)
+
             # 収束演算を行う
             for j in range(self.itr_max):
-
-                # 接線剛性マトリクスKtを作成する
-                matKt = self.makeKtmatrix()
-
-                # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                matKtc, vecRc = self.set_bound_condition(matKt, vecR, vecBoundDisp, physical_field)
 
                 # Ktcの逆行列が計算できるかチェックする
                 if np.isclose(LA.det(matKtc), 0.0) :
                     raise ValueError("有限要素法の計算に失敗しました。")
 
-                # 変位ベクトルを計算する
+                # 変位増分Δuを計算
                 vecd = LA.solve(matKtc, vecRc)
+
+                # 変位ベクトルの更新: u_new = u_old + Δu
                 physical_field += vecd
 
                 # 全ての要素内の変数を更新する
                 self.updateElements(physical_field, i)
 
+                # 新たな接線剛性マトリクスKtを作成する
+                matKt = self.makeKtmatrix()
+
                 # 新たな残差力ベクトルRを求める
-                vecQ = np.zeros(len(self.nodes) * self.nodeDof)
-                for elem in self.elements:
-                    vecq = elem.makeqVector()
-                    for k in range(len(elem.nodes)):
-                        for l in range(elem.nodeDof):
-                            vecQ[(elem.nodes[k].no - 1) * self.nodeDof + l] += vecq[k * elem.nodeDof + l]
+
                 vecR = vecf - vecQ
 
-                # 新たな境界条件を考慮したRcベクトルを作成する
-                matKt = self.makeKtmatrix()
+                # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
                 matKtc, vecRc = self.set_bound_condition(matKt, vecR, vecBoundDisp, physical_field)
 
                 # 時間平均力を計算する
                 aveForce = 0.0
-                cnt = len(self.nodes) * self.nodeDof
+                cnt = len(self.nodes) * self.num_dof_at_node
                 for k in range(len(vecQ)):
                     aveForce += np.abs(vecQ[k])
                 for k in range(len(vecf)):
@@ -124,48 +123,83 @@ class NonlinearFEM:
             self.elem_output_data_list.append(elemOutputDatas)
 
             # 節点反力を計算する
+            vecQ = self.make_Fint()
             vecRF = np.array(vecQ - vecf).flatten()
 
             # インクリメントの最終的な節点反力を格納する
             self.Freact_list.append(vecRF)      
 
+    #---------------------------------------------------------------------
+    # 全ての要素内の変数を更新する
+    # physical_field : 全節点の変位ベクトル(np.array型)
+    # incNo   : インクリメントの番号
+    #---------------------------------------------------------------------
+    def updateElements(self, physical_field, incNo):
+
+        for elem in self.elements:
+            elem_physical_field = np.zeros(len(elem.nodes) * self.num_dof_at_node)
+            for i in range(len(elem.nodes)):
+                for j in range(elem.num_dof_at_node):
+                    elem_physical_field[i * elem.num_dof_at_node + j] = physical_field[(elem.nodes[i].no - 1) * self.num_dof_at_node + j]
+
+            elem.update(elem_physical_field, incNo) 
+
+    #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
+    #---------------------------------------------------------------------
     def makeKtmatrix(self):
 
-        matKt = np.matrix(np.zeros((len(self.nodes) * self.nodeDof, len(self.nodes) * self.nodeDof)))
+        matKt = np.matrix(np.zeros((len(self.nodes) * self.num_dof_at_node, len(self.nodes) * self.num_dof_at_node)))
         for elem in self.elements:
 
             # ketマトリクスを計算する
             matKet = elem.makeKetmatrix()
 
             # Ktマトリクスに代入する
-            for c in range(len(elem.nodes) * self.nodeDof):
+            for c in range(len(elem.nodes) * self.num_dof_at_node):
                 
-                ct = (elem.nodes[c // self.nodeDof].no - 1) * self.nodeDof + c % self.nodeDof
+                ct = (elem.nodes[c // self.num_dof_at_node].no - 1) * self.num_dof_at_node + c % self.num_dof_at_node
                 
-                for r in range(len(elem.nodes) * self.nodeDof):
+                for r in range(len(elem.nodes) * self.num_dof_at_node):
                     
-                    rt = (elem.nodes[r // self.nodeDof].no - 1) * self.nodeDof + r % self.nodeDof
+                    rt = (elem.nodes[r // self.num_dof_at_node].no - 1) * self.num_dof_at_node + r % self.num_dof_at_node
                     
                     matKt[ct, rt] += matKet[c, r]
 
         return matKt
 
+    #---------------------------------------------------------------------
+    # 内力ベクトルFintを作成する
+    #---------------------------------------------------------------------
+    def make_Fint(self):
+
+        vecQ = np.zeros(len(self.nodes) * self.num_dof_at_node)
+        
+        for elem in self.elements:
+            vecq = elem.makeqVector()
+
+            for k in range(len(elem.nodes)):
+                for l in range(elem.num_dof_at_node):
+                    vecQ[(elem.nodes[k].no - 1) * self.num_dof_at_node + l] += vecq[k * elem.num_dof_at_node + l]
+        return vecQ
+    
+    #---------------------------------------------------------------------
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
+    #---------------------------------------------------------------------
     def make_force_vector(self):
 
         # 節点に負荷する荷重ベクトルを作成する
-        vecCondiForce = self.bound.make_force_vector()
-        vecf = vecCondiForce
+        vecf = self.bound.make_force_vector()
 
         return vecf
 
-
+    #---------------------------------------------------------------------
     # Kマトリクス、荷重ベクトルに境界条件を考慮する
     # matKt        : 接線剛性マトリクス
     # vecR         : 残差力ベクトル
     # vecBoundDisp : 節点の境界条件の変位ベクトル
     # physical_field      : 全節点の変位ベクトル(np.array型)
+    #---------------------------------------------------------------------
     def set_bound_condition(self, matKt, vecR, vecBoundDisp, physical_field):
 
         matKtc = np.copy(matKt)
@@ -191,20 +225,9 @@ class NonlinearFEM:
 
         return matKtc, vecRc
 
-    # 全ての要素内の変数を更新する
-    # physical_field : 全節点の変位ベクトル(np.array型)
-    # incNo   : インクリメントの番号
-    def updateElements(self, physical_field, incNo):
-
-        for elem in self.elements:
-            elem_physical_field = np.zeros(len(elem.nodes) * self.nodeDof)
-            for i in range(len(elem.nodes)):
-                for j in range(elem.nodeDof):
-                    elem_physical_field[i * elem.nodeDof + j] = physical_field[(elem.nodes[i].no - 1) * self.nodeDof + j]
-
-            elem.update(elem_physical_field, incNo) 
-
+    #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
+    #---------------------------------------------------------------------
     def output_txt(self, filePath):
 
         # ファイルを作成し、開く
@@ -269,22 +292,22 @@ class NonlinearFEM:
                 "Z Displacement".rjust(columNum) + "\n")
         f.write("-" * columNum * 4 + "\n")
         vecBoundDisp = self.bound.make_disp_vector()
-        for i in range(self.bound.nodeNum):
+        for i in range(self.bound.num_node):
             strFlg = False
-            for j in range(self.bound.nodeDof):
-                if not vecBoundDisp[i * self.bound.nodeDof + j] is None:
+            for j in range(self.bound.num_dof_at_node):
+                if not vecBoundDisp[i * self.bound.num_dof_at_node + j] is None:
                     strFlg = True
             if strFlg == True:
                 strNo = str(i + 1).rjust(columNum)
                 strXDisp = "None".rjust(columNum)
-                if not vecBoundDisp[i * self.bound.nodeDof] is None:
-                    strXDisp = str(format(vecBoundDisp[i * self.bound.nodeDof], floatDigits).rjust(columNum))
+                if not vecBoundDisp[i * self.bound.num_dof_at_node] is None:
+                    strXDisp = str(format(vecBoundDisp[i * self.bound.num_dof_at_node], floatDigits).rjust(columNum))
                 strYDisp = "None".rjust(columNum)
-                if not vecBoundDisp[i * self.bound.nodeDof + 1] is None:
-                    strYDisp = str(format(vecBoundDisp[i * self.bound.nodeDof + 1], floatDigits).rjust(columNum))
+                if not vecBoundDisp[i * self.bound.num_dof_at_node + 1] is None:
+                    strYDisp = str(format(vecBoundDisp[i * self.bound.num_dof_at_node + 1], floatDigits).rjust(columNum))
                 strZDisp = "None".rjust(columNum)
-                if not vecBoundDisp[i * self.bound.nodeDof + 2] is None:
-                    strZDisp = str(format(vecBoundDisp[i * self.bound.nodeDof + 2], floatDigits).rjust(columNum))
+                if not vecBoundDisp[i * self.bound.num_dof_at_node + 2] is None:
+                    strZDisp = str(format(vecBoundDisp[i * self.bound.num_dof_at_node + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXDisp + strYDisp + strZDisp + "\n")
         f.write("\n")
 
@@ -296,14 +319,14 @@ class NonlinearFEM:
         vecf = self.make_force_vector()
         for i in range(len(self.nodes)):
             strFlg = False
-            for j in range(self.bound.nodeDof):
-                if not vecf[i * self.bound.nodeDof + j] == 0.0:
+            for j in range(self.bound.num_dof_at_node):
+                if not vecf[i * self.bound.num_dof_at_node + j] == 0.0:
                     strFlg = True
             if strFlg == True:
                 strNo = str(i + 1).rjust(columNum)
-                strXForce = str(format(vecf[i * self.bound.nodeDof], floatDigits).rjust(columNum))
-                strYForce = str(format(vecf[i * self.bound.nodeDof + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecf[i * self.bound.nodeDof + 2], floatDigits).rjust(columNum))
+                strXForce = str(format(vecf[i * self.bound.num_dof_at_node], floatDigits).rjust(columNum))
+                strYForce = str(format(vecf[i * self.bound.num_dof_at_node + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecf[i * self.bound.num_dof_at_node + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXForce + strYForce + strZForce + "\n")
         f.write("\n")
 
@@ -325,11 +348,11 @@ class NonlinearFEM:
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 physical_field = self.physical_field_list[i]
-                mag = np.linalg.norm(np.array((physical_field[self.nodeDof * j], physical_field[self.nodeDof * j + 1], physical_field[self.nodeDof * j + 2])))
+                mag = np.linalg.norm(np.array((physical_field[self.num_dof_at_node * j], physical_field[self.num_dof_at_node * j + 1], physical_field[self.num_dof_at_node * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXDisp = str(format(physical_field[self.nodeDof * j], floatDigits).rjust(columNum))
-                strYDisp = str(format(physical_field[self.nodeDof * j + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(physical_field[self.nodeDof * j + 2], floatDigits).rjust(columNum))
+                strXDisp = str(format(physical_field[self.num_dof_at_node * j], floatDigits).rjust(columNum))
+                strYDisp = str(format(physical_field[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(physical_field[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
             f.write("\n")
 
@@ -405,11 +428,11 @@ class NonlinearFEM:
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 vecRF = self.Freact_list[i]
-                mag = np.linalg.norm(np.array((vecRF[self.nodeDof * j], vecRF[self.nodeDof * j + 1], vecRF[self.nodeDof * j + 2])))
+                mag = np.linalg.norm(np.array((vecRF[self.num_dof_at_node * j], vecRF[self.num_dof_at_node * j + 1], vecRF[self.num_dof_at_node * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXForce = str(format(vecRF[self.nodeDof * j], floatDigits).rjust(columNum))
-                strYForce = str(format(vecRF[self.nodeDof * j + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecRF[self.nodeDof * j + 2], floatDigits).rjust(columNum))
+                strXForce = str(format(vecRF[self.num_dof_at_node * j], floatDigits).rjust(columNum))
+                strYForce = str(format(vecRF[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecRF[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
             f.write("\n")
 

@@ -10,7 +10,7 @@ class LinearFEM:
     def __init__(self, nodes, elements, bound):
 
         # インスタンス変数を定義する
-        self.nodeDof = 3            # 節点の自由度
+        self.num_dof_at_node = 3            # 節点の自由度
         self.nodes = nodes          # 節点のリスト
         self.elements = elements    # 要素のリスト
         self.bound = bound          # 境界条件
@@ -47,12 +47,12 @@ class LinearFEM:
         vecCondiForce = self.bound.make_force_vector()
 
         # 等価節点力の荷重ベクトルを作成する
-        vecEqNodeForce = np.zeros(len(self.nodes) * self.nodeDof)
+        vecEqNodeForce = np.zeros(len(self.nodes) * self.num_dof_at_node)
         for elem in self.elements:
             vecElemEqNodeForce = elem.makeEqNodeForceVector()
             for i in range(len(elem.nodes)):
-                for j in range(self.nodeDof):
-                    vecEqNodeForce[self.nodeDof * (elem.nodes[i].no - 1) + j] += vecElemEqNodeForce[self.nodeDof * i + j]
+                for j in range(self.num_dof_at_node):
+                    vecEqNodeForce[self.num_dof_at_node * (elem.nodes[i].no - 1) + j] += vecElemEqNodeForce[self.num_dof_at_node * i + j]
 
         # 境界条件、等価節点力の荷重ベクトルを足し合わせる
         vecf = vecCondiForce + vecEqNodeForce
@@ -62,17 +62,17 @@ class LinearFEM:
     # 境界条件を考慮しないKマトリクスを作成する
     def makeKmatrix(self):
 
-        matK = np.matrix(np.zeros((len(self.nodes) * self.nodeDof, len(self.nodes) * self.nodeDof)))
+        matK = np.matrix(np.zeros((len(self.nodes) * self.num_dof_at_node, len(self.nodes) * self.num_dof_at_node)))
         for elem in self.elements:
 
             # ketマトリクスを計算する
             matKe = elem.makeKematrix()
 
             # Ktマトリクスに代入する
-            for c in range(len(elem.nodes) * self.nodeDof):
-                ct = (elem.nodes[c // self.nodeDof].no - 1) * self.nodeDof + c % self.nodeDof
-                for r in range(len(elem.nodes) * self.nodeDof):
-                    rt = (elem.nodes[r // self.nodeDof].no - 1) * self.nodeDof + r % self.nodeDof
+            for c in range(len(elem.nodes) * self.num_dof_at_node):
+                ct = (elem.nodes[c // self.num_dof_at_node].no - 1) * self.num_dof_at_node + c % self.num_dof_at_node
+                for r in range(len(elem.nodes) * self.num_dof_at_node):
+                    rt = (elem.nodes[r // self.num_dof_at_node].no - 1) * self.num_dof_at_node + r % self.num_dof_at_node
                     matK[ct, rt] += matKe[c, r]
 
         return matK
@@ -166,14 +166,14 @@ class LinearFEM:
         vecd = self.bound.make_disp_vector()
         for i in range(len(self.nodes)):
             flg = False
-            for j in range(self.nodeDof):
-                if not vecd[self.nodeDof * i + j] == None:
+            for j in range(self.num_dof_at_node):
+                if not vecd[self.num_dof_at_node * i + j] == None:
                     flg = True
             if flg == True:
                 strNo = str(i + 1).rjust(columNum)
-                strXDisp = str(format(vecd[self.nodeDof * i], floatDigits).rjust(columNum))
-                strYDisp = str(format(vecd[self.nodeDof * i + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(vecd[self.nodeDof * i + 2], floatDigits).rjust(columNum))
+                strXDisp = str(format(vecd[self.num_dof_at_node * i], floatDigits).rjust(columNum))
+                strYDisp = str(format(vecd[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(vecd[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXDisp + strYDisp + strZDisp + "\n")
         f.write("\n")
 
@@ -184,14 +184,14 @@ class LinearFEM:
         vecf = self.make_force_vector()
         for i in range(len(self.nodes)):
             flg = False
-            for j in range(self.nodeDof):
-                if not vecf[self.nodeDof * i + j] == None:
+            for j in range(self.num_dof_at_node):
+                if not vecf[self.num_dof_at_node * i + j] == None:
                     flg = True
             if flg == True:
                 strNo = str(i + 1).rjust(columNum)
-                strXForce = str(format(vecf[self.nodeDof * i], floatDigits).rjust(columNum))
-                strYForce = str(format(vecf[self.nodeDof * i + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecf[self.nodeDof * i + 2], floatDigits).rjust(columNum))
+                strXForce = str(format(vecf[self.num_dof_at_node * i], floatDigits).rjust(columNum))
+                strYForce = str(format(vecf[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecf[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXForce + strYForce + strZForce + "\n")
         f.write("\n")
 
@@ -208,11 +208,11 @@ class LinearFEM:
         f.write("-" * columNum * 5 + "\n")
         for i in range(len(self.nodes)):
             strNo = str(i + 1).rjust(columNum)
-            mag = np.linalg.norm(np.array((self.physical_field[self.nodeDof * i], self.physical_field[self.nodeDof * i + 1], self.physical_field[self.nodeDof * i + 2])))
+            mag = np.linalg.norm(np.array((self.physical_field[self.num_dof_at_node * i], self.physical_field[self.num_dof_at_node * i + 1], self.physical_field[self.num_dof_at_node * i + 2])))
             strMag = str(format(mag, floatDigits).rjust(columNum))
-            strXDisp = str(format(self.physical_field[self.nodeDof * i], floatDigits).rjust(columNum))
-            strYDisp = str(format(self.physical_field[self.nodeDof * i + 1], floatDigits).rjust(columNum))
-            strZDisp = str(format(self.physical_field[self.nodeDof * i + 2], floatDigits).rjust(columNum))
+            strXDisp = str(format(self.physical_field[self.num_dof_at_node * i], floatDigits).rjust(columNum))
+            strYDisp = str(format(self.physical_field[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
+            strZDisp = str(format(self.physical_field[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
             f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
         f.write("\n")
 
@@ -222,11 +222,11 @@ class LinearFEM:
         f.write("-" * columNum * 5 + "\n")
         for i in range(len(self.nodes)):
             strNo = str(i + 1).rjust(columNum)
-            mag = np.linalg.norm(np.array((self.vecRF[self.nodeDof * i], self.vecRF[self.nodeDof * i + 1], self.vecRF[self.nodeDof * i + 2])))
+            mag = np.linalg.norm(np.array((self.vecRF[self.num_dof_at_node * i], self.vecRF[self.num_dof_at_node * i + 1], self.vecRF[self.num_dof_at_node * i + 2])))
             strMag = str(format(mag, floatDigits).rjust(columNum))
-            strXForce = str(format(self.vecRF[self.nodeDof * i], floatDigits).rjust(columNum))
-            strYForce = str(format(self.vecRF[self.nodeDof * i + 1], floatDigits).rjust(columNum))
-            strZForce = str(format(self.vecRF[self.nodeDof * i + 2], floatDigits).rjust(columNum))
+            strXForce = str(format(self.vecRF[self.num_dof_at_node * i], floatDigits).rjust(columNum))
+            strYForce = str(format(self.vecRF[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
+            strZForce = str(format(self.vecRF[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
             f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
         f.write("\n")
 

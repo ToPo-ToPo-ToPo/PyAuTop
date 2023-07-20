@@ -22,7 +22,7 @@ class D1T2:
         self.ipNum = 1                # 積分点の数
         self.w = 2.0                  # 積分点の重み係数
 
-        # 材料モデルを初期化する
+        # 積分点の数だけ材料モデルを初期化する
         for ip in range(self.ipNum):
             self.material.append(material)
     
