@@ -1,8 +1,14 @@
 #https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
+from os.path import dirname, abspath
+import sys
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
 import numpy as np
 import numpy.linalg as LA
-from material.dmatrix import Dmatrix
+from src.material.dmatrix import Dmatrix
 
 # Misesモデルの構成則を計算するためのクラス
 class ElastoPlasticVonMisesSolid:

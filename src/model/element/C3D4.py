@@ -1,11 +1,15 @@
 #https://qiita.com/Altaka4128/items/41101c96729b68d7c96f
 
+from os.path import dirname, abspath
 import sys
-sys.path.append('../../')
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
 import numpy as np
 import numpy.linalg as LA
-from material.dmatrix import Dmatrix
-from model.node import Node
+from src.material.dmatrix import Dmatrix
+from src.model.node import Node
 
 # 四面体4節点要素のクラス
 class C3D4:

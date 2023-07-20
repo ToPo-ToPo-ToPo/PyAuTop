@@ -1,11 +1,14 @@
+from os.path import dirname, abspath
 import sys
-sys.path.append('../')
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
 
 import numpy as np
-from model.node import Node
-from model.element.C3D4 import C3D4
-from boundary import Boundary
-from method.linear_fem import LinearFEM
+from src.model.node import Node
+from src.model.element.C3D4 import C3D4
+from src.boundary import Boundary
+from src.method.linear_fem import LinearFEM
 
 def main():
 

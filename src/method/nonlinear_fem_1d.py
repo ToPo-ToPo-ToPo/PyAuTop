@@ -1,6 +1,12 @@
+from os.path import dirname, abspath
+import sys
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
 import numpy as np
 import numpy.linalg as LA
-from Boundary1d import Boundary1d
+from src.boundary_1d import Boundary1d
 
 class FEM1d:
     # コンストラクタ

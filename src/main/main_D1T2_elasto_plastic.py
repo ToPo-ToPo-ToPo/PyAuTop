@@ -1,9 +1,15 @@
 
-from node_1d import Node1d
-from Material import Material
-from Boundary1d import Boundary1d
-from FEM1d import FEM1d
-from d1t2 import d1t2
+from os.path import dirname, abspath
+import sys
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
+from src.model.node_1d import Node1d
+from src.material.elasto_plastic_von_mises_truss import ElastoPlasticVonMisesTruss
+from src.boundary_1d import Boundary1d
+from src.method.nonlinear_fem_1d import FEM1d
+from src.model.element.D1T2 import D1T2
 
 # メインの処理
 def main():
@@ -16,7 +22,7 @@ def main():
     # 材料情報を定義する
     area = 1.0
     young = 210e+03
-    mat = Material(young, area)
+    mat = ElastoPlasticVonMisesTruss(young, area)
     mat.addStressPStrainLine(200e3, 0.0)
     mat.addStressPStrainLine(250e3, 0.2)
     mat.addStressPStrainLine(290e3, 0.4)
@@ -25,7 +31,7 @@ def main():
     mat.addStressPStrainLine(350e3, 1.0)
 
     # 要素を定義する
-    elem1 = d1t2(1, nodes1, mat)
+    elem1 = D1T2(1, nodes1, mat)
     elems = [elem1]
 
     # 境界条件を定義する

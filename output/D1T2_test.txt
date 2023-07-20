@@ -1,0 +1,169 @@
+*********************************
+*          Input Data           *
+*********************************
+
+***** Node Data ******
+                  No                   X
+----------------------------------------
+                   1                   0
+                   2                 100
+
+***** Element Data ******
+                  No                Type             Node No               Young                Area
+----------------------------------------------------------------------------------------------------
+                   1                D1T2                 1 2              210000                   1
+
+***** SPC Constraint Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+
+***** Nodal Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   2              345000
+
+**********************************
+*          Result Data           *
+**********************************
+
+*Increment 1
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         16.42857143
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1              -34500
+                   2                   0
+
+*Increment 2
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         32.85714286
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1              -69000
+                   2                   0
+
+*Increment 3
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         49.28571429
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -103500
+                   2     2.910383046e-11
+
+*Increment 4
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         65.71428571
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -138000
+                   2                   0
+
+*Increment 5
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         82.14285714
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -172500
+                   2                   0
+
+*Increment 6
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         101.3714286
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -207000
+                   2                   0
+
+*Increment 7
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2               131.6
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -241500
+                   2     8.731149137e-11
+
+*Increment 8
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         164.4285714
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -276000
+                   2    -5.820766091e-11
+
+*Increment 9
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         201.5238095
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -310500
+                   2    -1.746229827e-10
+
+*Increment 10
+
+***** Displacement Data ******
+              NodeNo      X Displacement
+----------------------------------------
+                   1                   0
+                   2         254.2857143
+
+***** Reaction Force Data ******
+              NodeNo             X Force
+----------------------------------------
+                   1             -345000
+                   2                   0
+
