@@ -10,10 +10,12 @@ class ElastoPlasticVonMisesTruss:
 
         # インスタンス変数を定義する
         self.young = young      # ヤング率
-        self.D = young
+        self.D = young          # 接線剛性
         self.stressLine = []    # 応力-塑性ひずみ多直線の応力データ
         self.pStrainLine = []   # 応力-塑性ひずみ多直線の塑性ひずみデータ
         self.yeildFlg = False   # 要素が降伏しているか判定するフラグ
+        self.pStrain = 0.0      # 要素内の塑性ひずみ
+        self.stress = 0.0       # 要素内の応力
 
         self.itrNum = 100       # ニュートン・ラプソン法の収束回数の上限
         self.tol = 0.001        # ニュートン・ラプソン法の収束基準
@@ -39,8 +41,7 @@ class ElastoPlasticVonMisesTruss:
         self.stressLine.append(stress)
         self.pStrainLine.append(pStrain)
 
-    # 降伏関数を計算する
-    # (0より大きければ降伏している)
+    # 降伏関数を計算する(0より大きければ降伏している)
     # stress  : 応力
     # pStrain : 塑性ひずみ
     def yieldFunction(self, stress, pStrain):
@@ -91,8 +92,10 @@ class ElastoPlasticVonMisesTruss:
 
     # Return Mapping法により、ひずみ増分、降伏判定を更新する
     # strain      : 全ひずみ
-    # prevPStrain : 前回の塑性ひずみ
-    def returnMapping(self, strain, prevPStrain):
+    def compute_stress_and_tangent_matrix(self, strain):
+
+        # 前回の塑性ひずみを保存
+        prevPStrain = self.pStrain
 
         # 試行弾性応力を求める
         triStrain = strain - prevPStrain
@@ -102,15 +105,16 @@ class ElastoPlasticVonMisesTruss:
         triF = self.yieldFunction(triStress, np.abs(prevPStrain))
 
         # 降伏判定を計算する
-        if triF > 0.0 :
-            yeildFlg = True
+        if triF > 0.0:
+            self.yeildFlg = True
         else:
-            yeildFlg = False
+            self.yeildFlg = False
 
         # 塑性ひずみの増分量をニュートン・ラプソン法で計算する
         deltaGamma = 0.0
-        if triF > 0.0 :
+        if self.yeildFlg == True:
             kn = self.makeYeildStress(prevPStrain)
+            
             # 収束演算を行う
             for i in range(self.itrNum):
                 # y, y'を計算する
@@ -129,7 +133,7 @@ class ElastoPlasticVonMisesTruss:
         deltaPStrain = deltaGamma * np.sign(triStress)
 
         # 塑性ひずみを計算する
-        pStrain = prevPStrain + deltaPStrain
+        self.pStrain = prevPStrain + deltaPStrain
 
         # 応力を計算する
         stress = triStress - self.young * deltaPStrain
@@ -138,7 +142,7 @@ class ElastoPlasticVonMisesTruss:
         if self.yeildFlg == False:
             self.D = self.young
         else:
-            hDash = self.makePlasticModule(pStrain)
+            hDash = self.makePlasticModule(self.pStrain)
             self.D = self.young * hDash / (self.young + hDash)
 
-        return stress, pStrain
+        return stress

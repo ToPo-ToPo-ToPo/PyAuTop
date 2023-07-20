@@ -16,8 +16,6 @@ class D1T2:
         self.area = area              # 断面積
         self.ipNum = 1                # 積分点の数
         self.w = 2.0                  # 積分点の重み係数
-        self.pStrain = 0.0            # 要素内の塑性ひずみ
-        self.stress = 0.0             # 要素内の応力
 
         # Bマトリクスを計算する
         self.matB = self.makeBmatrix()
@@ -27,13 +25,6 @@ class D1T2:
 
         # dxdaを計算する
         dxda = -0.5 * self.nodes[0].x + 0.5 * self.nodes[1].x
-
-        # 降伏状態を判定し、Dを作成する
-        #if self.yeildFlg == False:
-        #    D = self.mat.young
-        #else:
-        #    hDash = self.mat.makePlasticModule(self.pStrain)
-        #    D = self.mat.young * hDash / (self.mat.young + hDash)
 
         # 要素接線剛性マトリクスKetを計算する
         matKet = self.area * self.w * self.matB.T * self.mat.D * self.matB * dxda
@@ -50,17 +41,16 @@ class D1T2:
 
         return matB
 
-    # Return Mapping法により、応力、塑性ひずみ、降伏判定を更新する
+    # 構成則の情報を更新する
     # vecElemDisp : 要素節点の変位ベクトル(np.array型)
-    def returnMapping(self, vecElemDisp):
+    def compute_constitutive_law(self, vecElemDisp):
 
         # 全ひずみを求める
         strain = np.array(self.matB @ vecElemDisp).flatten()
 
         # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
-        stress, pStrain = self.mat.returnMapping(strain, self.pStrain)
+        stress = self.mat.compute_stress_and_tangent_matrix(strain)
         self.stress = stress
-        self.pStrain = pStrain
 
     # 内力ベクトルqを作成する
     def makeqVector(self):

@@ -8,6 +8,9 @@ import numpy as np
 import numpy.linalg as LA
 from src.boundary_1d import Boundary1d
 
+#=============================================================================
+#
+#=============================================================================
 class FEM1d:
     # コンストラクタ
     # nodes    : 節点リスト(節点は1から始まる順番で並んでいる前提(Node1d型のリスト))
@@ -22,7 +25,9 @@ class FEM1d:
         self.itrNum = 100          # ニュートン法のイテレータの上限
         self.cn = 0.001            # ニュートン法の変位の収束判定のパラメータ
 
+    #---------------------------------------------------------------------
     # 陰解法で解析を行う
+    #---------------------------------------------------------------------
     def analysis(self):
 
         self.vecDispList = []          # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
@@ -36,81 +41,99 @@ class FEM1d:
 
         # ニュートン法により変位を求める
         vecDisp = np.zeros(len(self.nodes))   # 全節点の変位ベクトル
-        vecR = np.zeros(len(self.nodes))      # 残差力ベクトル
+        R = np.zeros(len(self.nodes))         # 残差力ベクトル
+        
+        # 増分解析ループ
         for i in range(self.incNum):
             vecDispFirst = vecDisp   # 初期の全節点の変位ベクトル
-            vecf = vecfList[i]       # i+1番インクリメントの荷重
+            Fext = vecfList[i]       # i+1番インクリメントの荷重
 
             # 境界条件を考慮しないインクリメント初期の接線剛性マトリクスKtを作成する
-            matKt = self.makeKtmatrix()
+            Kt = self.makeKtmatrix()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
             if i == 0:
-                vecR = vecfList[0]
+                R = Fext
             else:
-                vecR = vecfList[i] - vecfList[i - 1]
+                R = Fext - vecfList[i - 1]
 
             # 境界条件を考慮したインクリメント初期の接線剛性マトリクスKtc、残差力ベクトルRcを作成する
-            matKtc, vecRc = self.setBoundCondition(matKt, vecR)
+            Ktc, Rc = self.setBoundCondition(Kt, R)
 
-            # 収束演算を行う
+            # ニュートン法による収束演算を行う
             for j in range(self.itrNum):
 
                 # Ktcの逆行列が計算できるかチェックする
-                if np.isclose(LA.det(matKtc), 0.0) :
+                if np.isclose(LA.det(Ktc), 0.0) :
                     raise ValueError("有限要素法の計算に失敗しました。")
 
-                # 変位ベクトルを計算する
-                vecd = LA.solve(matKtc, vecRc)
+                # 変位増分Δuを計算
+                vecd = LA.solve(Ktc, Rc)
+
+                # 変位ベクトルの更新: u_new = u_old + Δu
                 vecDisp += vecd
 
-                # 要素内の塑性ひずみ、応力を更新する
-                self.returnMapping(vecDisp)
-
-                # 新たな残差力ベクトルRを求める
-                vecQ = np.zeros(len(self.nodes))
-                for elem in self.elements:
-                    vecq = elem.makeqVector()
-                    for k in range(len(elem.nodes)):
-                        vecQ[(elem.nodes[k].no - 1)] += vecq[k]
-                vecR = vecf - vecQ
+                # 要素内の情報を更新する
+                self.update_element_data(vecDisp)
 
                 # 新たな接線剛性マトリクスKtを作成する
-                matKt = self.makeKtmatrix()
+                Kt = self.makeKtmatrix()
+
+                # 新たな残差力ベクトルRを求める
+                Fint = self.makeFint()
+                R = Fext - Fint
 
                 # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                matKtc, vecRc = self.setBoundCondition(matKt, vecR)
+                Ktc, Rc = self.setBoundCondition(Kt, R)
 
                 # 収束判定を行う
+                # 増分変位ノルム|Δu|=0であれば収束
                 if np.isclose(LA.norm(vecd), 0.0):
                     break
-                dispRate = (LA.norm(vecd) / LA.norm(vecDisp - vecDispFirst))
-                if dispRate < self.cn:
-                    break
 
-            # インクリメントの最終的な変位べクトルを格納する
+                else:
+                    # 増分変位ノルム|Δu|の変化率が微小であれば収束
+                    dispRate = (LA.norm(vecd) / LA.norm(vecDisp - vecDispFirst))
+                    if dispRate < self.cn:
+                        break
+
+            # 収束後のインクリメントの変位べクトルを格納する
             self.vecDispList.append(vecDisp.copy()) 
 
-            # 節点反力を計算する
-            vecRF = np.array(vecQ - vecf).flatten()
+            # 収束後の節点反力を計算する
+            vecRF = np.array(Fint - Fext).flatten()
 
-            # インクリメントの最終的な節点反力を格納する
+            # 収束後のインクリメントの節点反力を格納する
             self.vecRFList.append(vecRF)
 
-    # ReturnMapping法により、要素内の応力、塑性ひずみ、降伏判定を更新する
+    #---------------------------------------------------------------------
+    # 結果を整理し、要素情報を更新する
     # vecDisp : 全節点の変位ベクトル(np.array型)
-    def returnMapping(self, vecDisp):
+    #---------------------------------------------------------------------
+    def update_element_data(self, vecDisp):
 
+        # 全要素ループ
         for elem in self.elements:
+            
+            # 要素elemの変位を初期化
             vecElemDisp = np.zeros(len(elem.nodes))
+            
+            # 要素変位の更新
             for i in range(len(elem.nodes)):
                 vecElemDisp[i] = vecDisp[(elem.nodes[i].no - 1)]
-            elem.returnMapping(vecElemDisp)        
+            
+            # 構成則内の変数を更新
+            elem.compute_constitutive_law(vecElemDisp)        
 
+    #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
+    #---------------------------------------------------------------------
     def makeKtmatrix(self):
 
+        # 初期化
         matKt = np.matrix(np.zeros((len(self.nodes), len(self.nodes))))
+        
+        # 全要素ループ
         for elem in self.elements:
 
             # ketマトリクスを計算する
@@ -118,15 +141,43 @@ class FEM1d:
 
             # Ktマトリクスに代入する
             for c in range(len(elem.nodes)):
+                
+                # 自由度番号の取得
                 ct = (elem.nodes[c].no - 1)
+                
                 for r in range(len(elem.nodes)):
+
+                    # 自由度番号の取得
                     rt = (elem.nodes[r].no - 1)
+
+                    # アセンブリング
                     matKt[ct, rt] += matKet[c, r]
 
         return matKt
+    
+    #---------------------------------------------------------------------
+    # 内力ベクトルvecQを作成する
+    #---------------------------------------------------------------------
+    def makeFint(self):
 
+        # 初期化
+        Fint = np.zeros(len(self.nodes))
+        
+        # 全体要素ループ
+        for elem in self.elements:
+            
+            # 要素内力ベクトルFint_eの作成
+            Fe = elem.makeqVector()
+            
+            # アセンブリングによる全体内力ベクトルFintを作成
+            for k in range(len(elem.nodes)):
+                Fint[(elem.nodes[k].no - 1)] += Fe[k]
+        
+        return Fint
 
+    #---------------------------------------------------------------------
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
+    #---------------------------------------------------------------------
     def makeForceVector(self):
 
         # 節点に負荷する荷重ベクトルを作成する
@@ -134,7 +185,9 @@ class FEM1d:
 
         return vecf
 
+    #---------------------------------------------------------------------
     # 接線剛性マトリクス、残差力ベクトルに境界条件を考慮する
+    #---------------------------------------------------------------------
     def setBoundCondition(self, matKt, vecR):
 
         matKtc = np.copy(matKt)
@@ -160,7 +213,9 @@ class FEM1d:
 
         return matKtc, vecRc
 
+    #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
+    #---------------------------------------------------------------------
     def outputTxt(self, filePath):
 
         # ファイルを作成し、開く
