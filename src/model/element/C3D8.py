@@ -6,6 +6,7 @@ parent_dir = dirname(dirname(dirname(abspath(__file__))))
 if parent_dir not in sys.path: 
     sys.path.append(parent_dir)
 
+import copy
 import numpy as np
 import numpy.linalg as LA
 from src.material.dmatrix import Dmatrix
@@ -44,7 +45,7 @@ class C3D8:
 
         # 材料モデルを初期化する
         for ip in range(self.ipNum):
-            self.material.append(material)
+            self.material.append(copy.deepcopy(material))
 
     #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKetを作成する
@@ -52,7 +53,7 @@ class C3D8:
     def makeKetmatrix(self):
 
         # 初期化
-        matKet = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
+        Ke = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
 
         # 積分点ループ
         for ip in range(self.ipNum):
@@ -64,10 +65,32 @@ class C3D8:
             matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
 
             # 要素剛性行列Keを計算する
-            matKet += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].matD @ matBbar * LA.det(matJ)
+            Ke += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].matD @ matBbar * LA.det(matJ)
 
-        return matKet
+        return Ke
+    
+    #---------------------------------------------------------------------
+    # 内力ベクトルqを作成する
+    #---------------------------------------------------------------------
+    def makeqVector(self):
 
+        # 初期化
+        Fint_e = np.zeros(self.num_dof_at_node * self.num_node)
+
+        # 積分点ループ
+        for ip in range(self.ipNum):
+            
+            # ヤコビ行列を計算する
+            matJ = self.makeJmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # Bbarマトリクスを計算する
+            matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # 内力ベクトルを計算する
+            Fint_e += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].vecStress * LA.det(matJ)
+
+        return Fint_e
+    
     #---------------------------------------------------------------------
     # ヤコビ行列を計算する
     # a : a座標値
@@ -296,28 +319,6 @@ class C3D8:
             
             # 構成則の内部変数の更新
             self.material[ip].update()
-        
-    #---------------------------------------------------------------------
-    # 内力ベクトルqを作成する
-    #---------------------------------------------------------------------
-    def makeqVector(self):
-
-        # ヤコビ行列を計算する
-        matJ = []
-        for i in range(self.ipNum):
-            matJ.append(self.makeJmatrix(self.ai[i], self.bi[i], self.ci[i]))
-
-        # Bbarマトリクスを計算する
-        matBbar = []
-        for i in range(self.ipNum):
-            matBbar.append(self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i]))
-
-        # 内力ベクトルqを計算する
-        vecq = np.zeros(self.num_dof_at_node * self.num_node)
-        for i in range(self.ipNum):
-            vecq += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].vecStress * LA.det(matJ[i])
-
-        return vecq
 
     # 要素の出力データを作成する
     def makeOutputData(self):

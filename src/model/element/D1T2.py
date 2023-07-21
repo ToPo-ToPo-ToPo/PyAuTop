@@ -1,3 +1,5 @@
+
+import copy
 import numpy as np
 
 #=============================================================================
@@ -24,7 +26,7 @@ class D1T2:
 
         # 積分点の数だけ材料モデルを初期化する
         for ip in range(self.ipNum):
-            self.material.append(material)
+            self.material.append(copy.deepcopy(material))
     
     #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKetを作成する
