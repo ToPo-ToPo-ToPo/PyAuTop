@@ -119,11 +119,11 @@ class ElastoPlasticVonMisesSolid:
 
         # ΔGammaをニュートン・ラプソン法で計算する
         deltaGamma = 0.0
-        if triF > 0.0 :
+        if yieldFlg == True:
             normTriDStress = LA.norm(tenTriDStress, "fro")
             
             # 収束演算を行う
-            for i in range(self.itr_max):
+            for iter in range(self.itr_max):
 
                 # yを計算する
                 yieldStress = self.make_yield_stress(prevEPStrain + np.sqrt(2.0 / 3.0) * deltaGamma)
@@ -136,7 +136,7 @@ class ElastoPlasticVonMisesSolid:
                 # 収束判定を行う
                 if np.abs(y) < self.tol:
                     break
-                elif (i + 1) == self.itr_max:
+                elif (iter + 1) == self.itr_max:
                     raise ValueError("ニュートン・ラプソン法が収束しませんでした。") 
 
                 # ΔGammaを更新する
@@ -325,6 +325,7 @@ class ElastoPlasticVonMisesSolid:
         if len(self.pStrainLine) == 0:
             if not pStrain == 0.0 :
                 raise ValueError("応力-ひずみ多直線データの最初のひずみは0.0になる必要があります。")
+        
         elif self.pStrainLine[-1] > pStrain:
             raise ValueError("応力-ひずみ多直線データの入力順序が間違っています。")
 
