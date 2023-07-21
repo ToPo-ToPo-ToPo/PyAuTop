@@ -3,6 +3,9 @@
 import numpy as np
 import numpy.linalg as LA
 
+#=============================================================================
+#
+#=============================================================================
 class NonlinearFEM:
     # コンストラクタ
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
@@ -21,167 +24,175 @@ class NonlinearFEM:
         self.rn = 0.005                    # ニュートン法の残差力の収束判定のパラメータ
         self.cn = 0.01                     # ニュートン法の変位の収束判定のパラメータ
 
+    #---------------------------------------------------------------------
     # 陰解法で解析を行う
+    #---------------------------------------------------------------------
     def analysis(self):
 
-        self.physical_field_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.solution_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.Freact_list = []             # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
         self.elem_output_data_list = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
 
         # 荷重をインクリメント毎に分割する
         Fext_list = []
-        for i in range(self.num_step):
-            Fext_list.append(self.make_force_vector() * (i + 1) / self.num_step)
+        for istep in range(self.num_step):
+            Fext_list.append(self.make_force_vector() * (istep + 1) / self.num_step)
 
-        # ニュートン法により変位を求める
-        physical_field = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
-        vecR = np.zeros(len(self.nodes) * self.num_dof_at_node)             # 残差力ベクトル
+        # 変位ベクトルと残差ベクトルの定義
+        solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
+        R = np.zeros(len(self.nodes) * self.num_dof_at_node)          # 残差力ベクトル
         
         # 増分解析ループ
-        for i in range(self.num_step):
+        for istep in range(self.num_step):
 
             print('============================================================')
-            print('Incremental step' + str(i))
+            print('Incremental step' + str(istep))
             print('============================================================')
 
-            physical_field_first = physical_field.copy()   # 初期の全節点の変位ベクトル
-            vecf = Fext_list[i]                            # i+1番インクリメントの荷重
+            # 初期化
+            solution_first = solution.copy()                   # 初期の全節点の変位ベクトル
+            Fext = Fext_list[istep]                            # i+1番インクリメントの荷重
             vecBoundDisp = self.bound.make_disp_vector()
 
             # 接線剛性マトリクスKtを作成する
-            matKt = self.makeKtmatrix()
+            Kt = self.make_Kt()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
-            if i == 0:
-                vecR = Fext_list[0]
+            if istep == 0:
+                R = Fext_list[0]
             else:
-                vecR = Fext_list[i] - Fext_list[i - 1]
+                R = Fext_list[istep] - Fext_list[istep - 1]
 
             # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-            matKtc, vecRc = self.set_bound_condition(matKt, vecR, vecBoundDisp, physical_field)
+            Ktc, Rc = self.set_bound_condition(Kt, R, vecBoundDisp, solution)
 
-            # 収束演算を行う
-            for j in range(self.itr_max):
+            # ニュートン法による収束演算を行う
+            for iter in range(self.itr_max):
 
                 # Ktcの逆行列が計算できるかチェックする
-                if np.isclose(LA.det(matKtc), 0.0) :
+                if np.isclose(LA.det(Ktc), 0.0):
                     raise ValueError("有限要素法の計算に失敗しました。")
 
                 # 変位増分Δuを計算
-                vecd = LA.solve(matKtc, vecRc)
+                delta_solution = LA.solve(Ktc, Rc)
 
                 # 変位ベクトルの更新: u_new = u_old + Δu
-                physical_field += vecd
+                solution += delta_solution
 
                 # 全ての要素内の変数を更新する
-                self.updateElements(physical_field, i)
+                self.update_element_data(solution)
 
                 # 新たな接線剛性マトリクスKtを作成する
-                matKt = self.makeKtmatrix()
+                Kt = self.make_Kt()
 
                 # 新たな残差力ベクトルRを求める
-
-                vecR = vecf - vecQ
+                Fint = self.make_Fint()
+                R = Fext - Fint
 
                 # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                matKtc, vecRc = self.set_bound_condition(matKt, vecR, vecBoundDisp, physical_field)
-
-                # 時間平均力を計算する
-                aveForce = 0.0
-                cnt = len(self.nodes) * self.num_dof_at_node
-                for k in range(len(vecQ)):
-                    aveForce += np.abs(vecQ[k])
-                for k in range(len(vecf)):
-                    if not vecf[k] == 0.0:
-                        aveForce += np.abs(vecf[k])
-                        cnt+= 1
-                aveForce = aveForce / cnt
+                Ktc, Rc = self.set_bound_condition(Kt, R, vecBoundDisp, solution)
 
                 # 収束判定を行う
-                if np.allclose(vecRc, 0.0):
-                    break
-                if np.isclose(LA.norm(vecd), 0.0):
-                    break
-                physical_field_rate = LA.norm(vecd) / LA.norm(physical_field - physical_field_first)
-                ResiForceRate = np.abs(vecRc).max() / aveForce
-                if physical_field_rate < self.cn and ResiForceRate < self.rn:
+                check_flag = self.check_convergence(Fint, Fext, Rc, solution, solution_first, delta_solution)
+                if(check_flag == True):
                     break
 
-                print('----------------------------------------------------')
-                print('Newton loop: step' + str(j))
-                print('redisual = ' + str(ResiForceRate))
-                print('----------------------------------------------------')
+            # 構成則の情報の更新
+            self.update_constitutive_low()
 
             # インクリメントの最終的な変位べクトルを格納する
-            self.physical_field_list.append(physical_field.copy())
-
-            # 変位ベクトルから要素の出力データを計算する
-            elemOutputDatas = []
-            for elem in self.elements:
-                elemOutputData = elem.makeOutputData()
-                elemOutputDatas.append(elemOutputData)        
-            self.elem_output_data_list.append(elemOutputDatas)
+            self.solution_list.append(solution.copy())
 
             # 節点反力を計算する
-            vecQ = self.make_Fint()
-            vecRF = np.array(vecQ - vecf).flatten()
+            # つり合っている場合、FintとFextの違いは反力のみとなる
+            Fint = self.make_Fint()
+            Rreact = np.array(Fint - Fext).flatten()
 
             # インクリメントの最終的な節点反力を格納する
-            self.Freact_list.append(vecRF)      
+            self.Freact_list.append(Rreact)      
 
     #---------------------------------------------------------------------
     # 全ての要素内の変数を更新する
-    # physical_field : 全節点の変位ベクトル(np.array型)
+    # solution : 全節点の変位ベクトル(np.array型)
     # incNo   : インクリメントの番号
     #---------------------------------------------------------------------
-    def updateElements(self, physical_field, incNo):
+    def update_element_data(self, solution):
 
+        # 全要素ループ
         for elem in self.elements:
-            elem_physical_field = np.zeros(len(elem.nodes) * self.num_dof_at_node)
+            
+            # 要素状態場の初期化
+            elem_solution = np.zeros(len(elem.nodes) * self.num_dof_at_node)
+            
+            # 要素状態場を更新する
             for i in range(len(elem.nodes)):
                 for j in range(elem.num_dof_at_node):
-                    elem_physical_field[i * elem.num_dof_at_node + j] = physical_field[(elem.nodes[i].no - 1) * self.num_dof_at_node + j]
+                    elem_solution[i * elem.num_dof_at_node + j] = solution[(elem.nodes[i].no - 1) * self.num_dof_at_node + j]
 
-            elem.update(elem_physical_field, incNo) 
+            # 構成則の内部の変数を更新する
+            elem.compute_constitutive_law(elem_solution) 
+    
+    #---------------------------------------------------------------------
+    # 全ての要素内の変数を更新する
+    #---------------------------------------------------------------------
+    def update_constitutive_low(self):
+
+        # 全要素ループ
+        for elem in self.elements:
+
+            # 構成則の内部の変数を更新する
+            elem.update_constitutive_law() 
 
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
     #---------------------------------------------------------------------
-    def makeKtmatrix(self):
+    def make_Kt(self):
 
-        matKt = np.matrix(np.zeros((len(self.nodes) * self.num_dof_at_node, len(self.nodes) * self.num_dof_at_node)))
+        # 初期化
+        Kt = np.matrix(np.zeros((len(self.nodes) * self.num_dof_at_node, len(self.nodes) * self.num_dof_at_node)))
+        
+        # 全要素ループ
         for elem in self.elements:
 
             # ketマトリクスを計算する
-            matKet = elem.makeKetmatrix()
+            Ke = elem.makeKetmatrix()
 
             # Ktマトリクスに代入する
             for c in range(len(elem.nodes) * self.num_dof_at_node):
                 
+                # 自由度番号の取得
                 ct = (elem.nodes[c // self.num_dof_at_node].no - 1) * self.num_dof_at_node + c % self.num_dof_at_node
                 
                 for r in range(len(elem.nodes) * self.num_dof_at_node):
                     
+                    # 自由度番号の取得
                     rt = (elem.nodes[r // self.num_dof_at_node].no - 1) * self.num_dof_at_node + r % self.num_dof_at_node
                     
-                    matKt[ct, rt] += matKet[c, r]
+                    # アセンブリング
+                    Kt[ct, rt] += Ke[c, r]
 
-        return matKt
+        return Kt
 
     #---------------------------------------------------------------------
     # 内力ベクトルFintを作成する
     #---------------------------------------------------------------------
     def make_Fint(self):
 
-        vecQ = np.zeros(len(self.nodes) * self.num_dof_at_node)
+        # 初期化
+        Fint = np.zeros(len(self.nodes) * self.num_dof_at_node)
         
+        # 全要素ループ
         for elem in self.elements:
-            vecq = elem.makeqVector()
-
+            
+            # 要素内力ベクトルを作成する
+            Fint_e = elem.makeqVector()
+            
+            # アセンブリング
             for k in range(len(elem.nodes)):
                 for l in range(elem.num_dof_at_node):
-                    vecQ[(elem.nodes[k].no - 1) * self.num_dof_at_node + l] += vecq[k * elem.num_dof_at_node + l]
-        return vecQ
+                    Fint[(elem.nodes[k].no - 1) * self.num_dof_at_node + l] += Fint_e[k * elem.num_dof_at_node + l]
+        
+        return Fint
     
     #---------------------------------------------------------------------
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
@@ -198,9 +209,9 @@ class NonlinearFEM:
     # matKt        : 接線剛性マトリクス
     # vecR         : 残差力ベクトル
     # vecBoundDisp : 節点の境界条件の変位ベクトル
-    # physical_field      : 全節点の変位ベクトル(np.array型)
+    # solution      : 全節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
-    def set_bound_condition(self, matKt, vecR, vecBoundDisp, physical_field):
+    def set_bound_condition(self, matKt, vecR, vecBoundDisp, solution):
 
         matKtc = np.copy(matKt)
         vecRc = np.copy(vecR)
@@ -212,7 +223,7 @@ class NonlinearFEM:
                 vecx = np.array(matKt[:, i]).flatten()
 
                 # 変位ベクトルi列の影響を荷重ベクトルに適用する
-                vecRc = vecRc - (vecBoundDisp[i] - physical_field[i]) * vecx
+                vecRc = vecRc - (vecBoundDisp[i] - solution[i]) * vecx
 
                 # Kマトリクスのi行、i列を全て0にし、i行i列の値を1にする
                 matKtc[:, i] = 0.0
@@ -221,9 +232,47 @@ class NonlinearFEM:
 
         for i in range(len(vecBoundDisp)):
             if not vecBoundDisp[i] == None:
-                vecRc[i] = vecBoundDisp[i] - physical_field[i]
+                vecRc[i] = vecBoundDisp[i] - solution[i]
 
         return matKtc, vecRc
+
+    #---------------------------------------------------------------------
+    # ニュートンラプソン法の収束判定を行う
+    #---------------------------------------------------------------------
+    def check_convergence(self, Fint, Fext, Rc, solution, solution_first, delta_solution):
+        
+        # 初期化
+        check_flag = False
+
+        # 収束判定を行う
+        # 残差ベクトルの全成分または変位増分がゼロの場合、収束とする
+        if np.allclose(Rc, 0.0) or np.isclose(LA.norm(delta_solution), 0.0):
+            check_flag = True
+            return check_flag
+
+        # 時間平均力を計算する
+        aveForce = 0.0
+        cnt = len(self.nodes) * self.num_dof_at_node
+        for k in range(len(Fint)):
+            aveForce += np.abs(Fint[k])
+                
+        for k in range(len(Fext)):
+            if not Fext[k] == 0.0:
+                aveForce += np.abs(Fext[k])
+                cnt+= 1
+                
+        aveForce = aveForce / cnt
+
+        # 増分変位における相対誤差を計算する
+        solution_rate = LA.norm(delta_solution) / LA.norm(solution - solution_first)
+        
+        # 残差ベクトルにおける相対誤差を計算する
+        ResiForceRate = np.abs(Rc).max() / aveForce
+
+        # 増分変位と残差ベクトルが閾値以下であれば、収束とする
+        if solution_rate < self.cn and ResiForceRate < self.rn:
+            check_flag = True
+            return check_flag
 
     #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
@@ -347,12 +396,12 @@ class NonlinearFEM:
             f.write("-" * columNum * 5 + "\n")
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
-                physical_field = self.physical_field_list[i]
-                mag = np.linalg.norm(np.array((physical_field[self.num_dof_at_node * j], physical_field[self.num_dof_at_node * j + 1], physical_field[self.num_dof_at_node * j + 2])))
+                solution = self.solution_list[i]
+                mag = np.linalg.norm(np.array((solution[self.num_dof_at_node * j], solution[self.num_dof_at_node * j + 1], solution[self.num_dof_at_node * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXDisp = str(format(physical_field[self.num_dof_at_node * j], floatDigits).rjust(columNum))
-                strYDisp = str(format(physical_field[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(physical_field[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                strXDisp = str(format(solution[self.num_dof_at_node * j], floatDigits).rjust(columNum))
+                strYDisp = str(format(solution[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(solution[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
             f.write("\n")
 

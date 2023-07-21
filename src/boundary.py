@@ -10,7 +10,7 @@ class Boundary:
         # インスタンス変数を定義する
         self.num_node = num_node                                     # 全節点数
         self.num_dof_at_node = 3                                           # 節点の自由度
-        self.physical_field = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
+        self.solution = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
         self.F = np.array(num_node * self.num_dof_at_node * [0.0])   # 荷重ベクトル
 
         self.matC = np.empty((0, num_node * self.num_dof_at_node))          # 多点拘束用のCマトリクス
@@ -23,9 +23,9 @@ class Boundary:
     # dispZ  : z方向の強制変位
     def add_SPC(self, nodeNo, dispX, dispY, dispZ):
 
-        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 0] = dispX
-        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 1] = dispY
-        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 2] = dispZ
+        self.solution[self.num_dof_at_node * (nodeNo - 1) + 0] = dispX
+        self.solution[self.num_dof_at_node * (nodeNo - 1) + 1] = dispY
+        self.solution[self.num_dof_at_node * (nodeNo - 1) + 2] = dispZ
 
     # 多点拘束を追加する
     # 条件式 : vecC x u = d
@@ -36,7 +36,7 @@ class Boundary:
 
     # 単点拘束条件から変位ベクトルを作成する
     def make_disp_vector(self):
-        return self.physical_field
+        return self.solution
 
     # 荷重を追加する
     def add_force(self, nodeNo, fx, fy, fz):
@@ -57,7 +57,7 @@ class Boundary:
     def print_boundary(self):
         print("Node Number: ", self.num_node)
         print("SPC Constraint Condition")
-        print(self.physical_field)
+        print(self.solution)
         print("Force Condition")
         print(self.F)
         print("MPC Constraint Condition")

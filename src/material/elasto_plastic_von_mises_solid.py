@@ -10,7 +10,9 @@ import numpy as np
 import numpy.linalg as LA
 from src.material.dmatrix import Dmatrix
 
-# Misesモデルの構成則を計算するためのクラス
+#=============================================================================
+# 3次元ソリッド要素に対するMisesモデルの構成則を計算するためのクラス
+#=============================================================================
 class ElastoPlasticVonMisesSolid:
     # コンストラクタ
     # young       : ヤング率
@@ -27,129 +29,65 @@ class ElastoPlasticVonMisesSolid:
         self.stressLine = []                             # 真応力-塑性ひずみ多直線の真応力データ
         self.pStrainLine = []                            # 真応力-塑性ひずみ多直線の塑性ひずみデータ
         
-        self.itr_max = 100                                # ニュートン・ラプソン法の収束回数の上限
+        self.itr_max = 100                               # ニュートン・ラプソン法の収束回数の上限
         self.tol = 1.0e-06                               # ニュートン・ラプソン法の収束基準
         self.incNo = 0                                   # インクリメントのNo
 
         # 関連する変数を初期化する
-        self.yieldFlgList = False                        # 要素が降伏しているか判定するフラグ
-        self.vecEStrainList = np.zeros(6)                # 要素内の弾性ひずみ
-        self.vecPStrainList = np.zeros(6)                # 要素内の塑性ひずみ
-        self.ePStrainList = 0.0                          # 要素内の相当塑性ひずみ
-        self.vecStressList = np.zeros(6)                 # 要素内の応力
-        self.misesList = 0.0                             # 要素内のミーゼス応力
+        self.yieldFlg = False                        # 要素が降伏しているか判定するフラグ
+        self.vecEStrain = np.zeros(6)                # 要素内の弾性ひずみ
+        self.vecPStrain = np.zeros(6)                # 要素内の塑性ひずみ
+        self.ePStrain = 0.0                          # 要素内の相当塑性ひずみ
+        self.vecStress = np.zeros(6)                 # 要素内の応力
+        self.mises = 0.0                             # 要素内のミーゼス応力
 
         # 前回のインクリメントのひずみを初期化する
-        self.vecPrevEStrainList = np.zeros(6)            # 要素内の弾性ひずみ
-        self.vecPrevPStrainList = np.zeros(6)            # 要素内の塑性ひずみ
-        self.prevEPStrainList = 0.0                      # 要素内の相当塑性ひずみ
+        self.vecPrevEStrain = np.zeros(6)            # 要素内の弾性ひずみ
+        self.vecPrevPStrain = np.zeros(6)            # 要素内の塑性ひずみ
+        self.prevEPStrain = 0.0                      # 要素内の相当塑性ひずみ
 
         # Dマトリックスを初期化する
-        self.matD = Dmatrix(self.young, self.poisson).make_De_matrix()
+        self.matD = Dmatrix(young, poisson).make_De_matrix()
 
-    # 真応力-塑性ひずみ多直線のデータを追加する
-    # (入力されるデータはひずみが小さい順になり、最初の塑性ひずみは0.0にならなければいけない)
-    # (塑性係数は正になる前提)
-    # stress  : 真応力
-    # pStrain : 塑性ひずみ
-    def add_stress_plastic_strain_line(self, stress, pStrain):
-
-        # 入力チェック
-        if len(self.pStrainLine) == 0:
-            if not pStrain == 0.0 :
-                raise ValueError("応力-ひずみ多直線データの最初のひずみは0.0になる必要があります。")
-        elif self.pStrainLine[-1] > pStrain:
-            raise ValueError("応力-ひずみ多直線データの入力順序が間違っています。")
-
-        # 最初の入力の場合は降伏応力を格納する
-        if len(self.stressLine) == 0:
-            self.yieldStress = stress   # 降伏応力
-
-        self.stressLine.append(stress)
-        self.pStrainLine.append(pStrain)
-
-    # 降伏関数を計算する
-    # mStress  : 相当応力
-    # ePStrain : 相当塑性ひずみ
-    def yield_function(self, mStress, ePStrain):
-
-        f = 0.0
-        if hasattr(self, 'yieldStress'):
-            f = mStress - self.make_yield_stress(ePStrain)
-
-        return f
-
-    # 降伏応力を求める
-    # ePStrain : 相当塑性ひずみ
-    def make_yield_stress(self, ePStrain):
-
-        yieldStress = 0.0
-        if hasattr(self, 'yieldStress'):
-            # pStrainが何番目のデータの間か求める
-            no = None
-            for i in range(len(self.pStrainLine) - 1):
-                if self.pStrainLine[i] <= ePStrain and ePStrain <= self.pStrainLine[i+1]:
-                    no = i
-                    break
-            if no is None :
-                print('epStrain = ' + str(ePStrain))
-                raise ValueError("相当塑性ひずみが定義した範囲を超えています。")
-
-            hDash = self.make_plastic_module(ePStrain)
-            yieldStress = hDash * (ePStrain - self.pStrainLine[no]) + self.stressLine[no]
-
-        return yieldStress
-
-
-    # 塑性係数を求める
-    # ePStrain : 相当塑性ひずみ
-    def make_plastic_module(self, ePStrain):
-
-        # epが何番目のデータの間か求める
-        no = None
-        for i in range(len(self.pStrainLine) - 1):
-            if self.pStrainLine[i] <= ePStrain and ePStrain <= self.pStrainLine[i+1]:
-                no = i
-        if no is None :
-            raise ValueError("相当塑性ひずみが定義した範囲を超えています。")
-
-        # 塑性係数を計算する
-        h = (self.stressLine[no+1] - self.stressLine[no]) / (self.pStrainLine[no+1] - self.pStrainLine[no])
-
-        return h
-
+    #---------------------------------------------------------------------
     # Return Mapping法により、応力、塑性ひずみ、降伏判定を更新する
-    # physical_field : 要素節点の変位ベクトル(np.array型)
+    # solution : 要素節点の変位ベクトル(np.array型)
     # incNo   : インクリメントNo
-    def update(self, matBbar, physical_field, incNo):
-
+    #---------------------------------------------------------------------
+    def compute_stress_and_tangent_matrix(self, matB, solution):
+        
         # 各積分点の全ひずみを求める
-        vecStrainList = self.make_strain_vector(matBbar, physical_field)
+        vecStrain = self.make_strain_vector(matB, solution)
 
-        # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
-        # リターンマッピング法を計算する
-        if self.incNo == incNo:   # 前回と同じインクリメントの場合
-            vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep = self.return_mapping_3D(vecStrainList, self.vecPrevPStrainList, self.prevEPStrainList)
-            
-        else:   # 前回と異なるインクリメントの場合
-            self.vecPrevEStrainList = self.vecEStrainList
-            self.vecPrevPStrainList = self.vecPStrainList
-            self.prevEPStrainList = self.ePStrainList
+        # リターンマッピングアルゴリズムによって応力、塑性ひずみ、接線剛性などを求める
+        vecStress, vecEStrain, vecPStrain, ePStrain, matDep = self.return_mapping_3D(vecStrain, self.vecPrevPStrain, self.prevEPStrain)
 
-            vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep = self.return_mapping_3D(vecStrainList, self.vecPStrainList, self.ePStrainList)
-
-        self.vecStressList = vecStress
-        self.vecEStrainList = vecEStrain
-        self.vecPStrainList = vecPStrain
-        self.ePStrainList = ePStrain
-        self.yieldFlgList = yieldFlg
-        self.misesList = self.mises_stress(vecStress)
+        # 変数を保存
+        self.vecStress = vecStress
+        self.vecEStrain = vecEStrain
+        self.vecPStrain = vecPStrain
+        self.ePStrain = ePStrain
         self.matD = matDep
+        
+        # mises応力を求める
+        self.mises = self.mises_stress(vecStress)
 
+    #---------------------------------------------------------------------
+    # 積分点のひずみベクトルのリストを作成する
+    # solution : 要素節点の変位のリスト
+    #---------------------------------------------------------------------
+    def make_strain_vector(self, matB, solution):
+
+        vecIpStrains = matB @ solution 
+
+        return vecIpStrains
+    
+    #---------------------------------------------------------------------
     # Return Mapping法により、3次元の応力、塑性ひずみ、相当塑性ひずみ、降伏判定を計算する
     # vecStrain      : 全ひずみ
     # vecPrevPStrain : 前回の塑性ひずみ
     # prevEPStrain   : 前回の相当塑性ひずみ
+    #---------------------------------------------------------------------
     def return_mapping_3D(self, vecStrain, vecPrevPStrain, prevEPStrain):
 
         # 偏差ひずみのテンソルを求める
@@ -255,22 +193,80 @@ class ElastoPlasticVonMisesSolid:
         else:
             matDep = Dmatrix(self.young, self.poisson).make_De_matrix()
 
-        return vecStress, vecEStrain, vecPStrain, ePStrain, yieldFlg, matDep
+        return vecStress, vecEStrain, vecPStrain, ePStrain, matDep
+    
+    #---------------------------------------------------------------------
+    # ニュートンラプソン法収束後の内部変数の更新
+    # prev* : 次増分解析ステップの初期値
+    #---------------------------------------------------------------------
+    def update(self):
+        
+        self.vecPrevEStrain = self.vecEStrain
+        self.vecPrevPStrain = self.vecPStrain
+        self.prevEPStrain = self.ePStrain
 
-    # 3次元のミーゼス応力を計算する
-    # vecStress : 応力ベクトル(np.array型)
-    def mises_stress_3D(self, vecStress):
+    #---------------------------------------------------------------------
+    # 降伏関数を計算する
+    # mStress  : 相当応力
+    # ePStrain : 相当塑性ひずみ
+    #---------------------------------------------------------------------
+    def yield_function(self, mStress, ePStrain):
 
-        tmp1 = np.square(vecStress[0] - vecStress[1]) + np.square(vecStress[1] - vecStress[2]) + np.square(vecStress[2] - vecStress[0])
-        tmp2 = 6.0 * (np.square(vecStress[3]) + np.square(vecStress[4]) + np.square(vecStress[5]))
-        mises = np.sqrt(0.5 * (tmp1 + tmp2))
+        f = 0.0
+        if hasattr(self, 'yieldStress'):
+            f = mStress - self.make_yield_stress(ePStrain)
 
-        return mises
+        return f
 
+    #---------------------------------------------------------------------
+    # 降伏応力を求める
+    # ePStrain : 相当塑性ひずみ
+    #---------------------------------------------------------------------
+    def make_yield_stress(self, ePStrain):
+
+        yieldStress = 0.0
+        if hasattr(self, 'yieldStress'):
+            # pStrainが何番目のデータの間か求める
+            no = None
+            for i in range(len(self.pStrainLine) - 1):
+                if self.pStrainLine[i] <= ePStrain and ePStrain <= self.pStrainLine[i+1]:
+                    no = i
+                    break
+            if no is None :
+                print('epStrain = ' + str(ePStrain))
+                raise ValueError("相当塑性ひずみが定義した範囲を超えています。")
+
+            hDash = self.make_plastic_module(ePStrain)
+            yieldStress = hDash * (ePStrain - self.pStrainLine[no]) + self.stressLine[no]
+
+        return yieldStress
+
+    #---------------------------------------------------------------------
+    # 塑性係数を求める
+    # ePStrain : 相当塑性ひずみ
+    #---------------------------------------------------------------------
+    def make_plastic_module(self, ePStrain):
+
+        # epが何番目のデータの間か求める
+        no = None
+        for i in range(len(self.pStrainLine) - 1):
+            if self.pStrainLine[i] <= ePStrain and ePStrain <= self.pStrainLine[i+1]:
+                no = i
+                
+        if no is None:
+            raise ValueError("相当塑性ひずみが定義した範囲を超えています。")
+
+        # 塑性係数を計算する
+        h = (self.stressLine[no+1] - self.stressLine[no]) / (self.pStrainLine[no+1] - self.pStrainLine[no])
+
+        return h
+
+    #---------------------------------------------------------------------
     # 塑性状態のDマトリクスを作成する
     # vecStress    : 応力
     # ePStrain     : 相当塑性ひずみ
     # prevEPStrain : 前の相当塑性ひずみ 
+    #---------------------------------------------------------------------
     def make_Dep_matrix_3D(self, vecStress, ePStrain, prevEPStrain):
 
         # Deマトリクスを計算する
@@ -278,7 +274,7 @@ class ElastoPlasticVonMisesSolid:
 
         # gammmaDashを計算する
         deltaEPStrain = ePStrain - prevEPStrain
-        mStress = self.mises_stress_3D(vecStress)
+        mStress = self.mises_stress(vecStress)
         gammaDash = 3.0 * deltaEPStrain / (2.0 * mStress)
 
         matP = (1.0 / 3.0) * np.array([[2.0, -1.0, -1.0, 0.0, 0.0, 0.0],
@@ -287,26 +283,26 @@ class ElastoPlasticVonMisesSolid:
                                        [0.0, 0.0, 0.0, 6.0, 0.0, 0.0],
                                        [0.0, 0.0, 0.0, 0.0, 6.0, 0.0],
                                        [0.0, 0.0, 0.0, 0.0, 0.0, 6.0]])
+        
         matA = LA.inv(LA.inv(matDe) + gammaDash * matP)
+        
         hDash = self.make_plastic_module(ePStrain)
+        
         a = np.power(1.0 - (2.0 / 3.0) * gammaDash * hDash, -1)
+        
         vecDStress = matP @ vecStress
+        
         tmp1 = np.array(matA @ (np.matrix(vecDStress).T * np.matrix(vecDStress)) @ matA)
         tmp2 = (4.0 / 9.0) * a * hDash * mStress ** 2 + (np.matrix(vecDStress) @ matA @ np.matrix(vecDStress).T)[0,0]
+        
         matDep = np.array(matA - tmp1 / tmp2)
 
         return matDep
-    
-    # 積分点のひずみベクトルのリストを作成する
-    # physical_field : 要素節点の変位のリスト
-    def make_strain_vector(self, matBbar, physical_field):
 
-        vecIpStrains = matBbar @ physical_field 
-
-        return vecIpStrains
-
+    #---------------------------------------------------------------------
     # ミーゼス応力を計算する
     # vecStress : 応力ベクトル(np.array型)
+    #---------------------------------------------------------------------
     def mises_stress(self, vecStress):
 
         tmp1 = np.square(vecStress[0] - vecStress[1]) + np.square(vecStress[1] - vecStress[2]) + np.square(vecStress[2] - vecStress[0])
@@ -314,3 +310,26 @@ class ElastoPlasticVonMisesSolid:
         mises = np.sqrt(0.5 * (tmp1 + tmp2))
 
         return mises
+    
+    #---------------------------------------------------------------------
+    # 真応力-塑性ひずみ多直線のデータを追加する
+    # (入力されるデータはひずみが小さい順になり、最初の塑性ひずみは0.0にならなければいけない)
+    # (塑性係数は正になる前提)
+    # stress  : 真応力
+    # pStrain : 塑性ひずみ
+    #---------------------------------------------------------------------
+    def add_stress_plastic_strain_line(self, stress, pStrain):
+
+        # 入力チェック
+        if len(self.pStrainLine) == 0:
+            if not pStrain == 0.0 :
+                raise ValueError("応力-ひずみ多直線データの最初のひずみは0.0になる必要があります。")
+        elif self.pStrainLine[-1] > pStrain:
+            raise ValueError("応力-ひずみ多直線データの入力順序が間違っています。")
+
+        # 最初の入力の場合は降伏応力を格納する
+        if len(self.stressLine) == 0:
+            self.yieldStress = stress   # 降伏応力
+
+        self.stressLine.append(stress)
+        self.pStrainLine.append(pStrain)

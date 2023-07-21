@@ -12,7 +12,7 @@ class Boundary1d:
         self.num_node = num_node                                                   # 全節点数
         self.num_dof_at_node = 1                                                   # 節点の自由度
 
-        self.physical_field = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
+        self.solution = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
         self.F = np.array(num_node * self.num_dof_at_node * [0.0])                 # 荷重ベクトル
         
         self.matC = np.empty((0, self.num_node))   # 多点拘束用のCマトリクス
@@ -22,11 +22,11 @@ class Boundary1d:
     # nodeNo : 節点番号
     # dispX  : 強制変位量
     def add_SPC(self, nodeNo, dispX):
-        self.physical_field[self.num_dof_at_node * (nodeNo - 1) + 0] = dispX
+        self.solution[self.num_dof_at_node * (nodeNo - 1) + 0] = dispX
 
     # 単点拘束条件から変位ベクトルを作成する
     def make_disp_vector(self):
-        return self.physical_field
+        return self.solution
 
     # 荷重を追加する
     # nodeNo : 節点番号

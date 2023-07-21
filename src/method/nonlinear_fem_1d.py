@@ -31,7 +31,7 @@ class FEM1d:
     #---------------------------------------------------------------------
     def analysis(self):
 
-        self.physical_field_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.solution_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.Freact_list = []             # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
         self.elem_output_data_list = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
 
@@ -41,12 +41,12 @@ class FEM1d:
             Fext_list.append(self.make_force_vector() * (i + 1) / self.num_step)
 
         # ニュートン法により変位を求める
-        physical_field = np.zeros(len(self.nodes))   # 全節点の変位ベクトル
+        solution = np.zeros(len(self.nodes))   # 全節点の変位ベクトル
         R = np.zeros(len(self.nodes))                # 残差力ベクトル
         
         # 増分解析ループ
         for i in range(self.num_step):
-            physical_field_first = physical_field   # 初期の全節点の変位ベクトル
+            solution_first = solution   # 初期の全節点の変位ベクトル
             Fext = Fext_list[i]                     # i+1番インクリメントの荷重
 
             # 境界条件を考慮しないインクリメント初期の接線剛性マトリクスKtを作成する
@@ -72,10 +72,10 @@ class FEM1d:
                 vecd = LA.solve(Ktc, Rc)
 
                 # 変位ベクトルの更新: u_new = u_old + Δu
-                physical_field += vecd
+                solution += vecd
 
                 # 要素内の情報を更新する
-                self.update_element_data(physical_field)
+                self.update_element_data(solution)
 
                 # 新たな接線剛性マトリクスKtを作成する
                 Kt = self.make_Kt()
@@ -94,12 +94,12 @@ class FEM1d:
 
                 else:
                     # 増分変位ノルム|Δu|の変化率が微小であれば収束
-                    physical_field_rate = (LA.norm(vecd) / LA.norm(physical_field - physical_field_first))
-                    if physical_field_rate < self.cn:
+                    solution_rate = (LA.norm(vecd) / LA.norm(solution - solution_first))
+                    if solution_rate < self.cn:
                         break
 
             # 収束後のインクリメントの変位べクトルを格納する
-            self.physical_field_list.append(physical_field.copy()) 
+            self.solution_list.append(solution.copy()) 
 
             # 収束後の節点反力を計算する
             vecRF = np.array(Fint - Fext).flatten()
@@ -109,22 +109,22 @@ class FEM1d:
 
     #---------------------------------------------------------------------
     # 結果を整理し、要素情報を更新する
-    # physical_field : 全節点の変位ベクトル(np.array型)
+    # solution : 全節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
-    def update_element_data(self, physical_field):
+    def update_element_data(self, solution):
 
         # 全要素ループ
         for elem in self.elements:
             
             # 要素elemの変位を初期化
-            elem_physical_field = np.zeros(len(elem.nodes))
+            elem_solution = np.zeros(len(elem.nodes))
             
             # 要素変位の更新
             for i in range(len(elem.nodes)):
-                elem_physical_field[i] = physical_field[(elem.nodes[i].no - 1)]
+                elem_solution[i] = solution[(elem.nodes[i].no - 1)]
             
             # 構成則内の変数を更新
-            elem.compute_constitutive_law(elem_physical_field)        
+            elem.compute_constitutive_law(elem_solution)        
 
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
@@ -196,17 +196,17 @@ class FEM1d:
         Rc = np.copy(R)
 
         # 強制変位ベクトルを取得
-        physical_field = self.bound.make_disp_vector()
+        solution = self.bound.make_disp_vector()
 
         # 単点拘束条件を考慮した接線剛性マトリクス、残差力ベクトルを作成する
-        for idof in range(len(physical_field)):    
-            if not physical_field[idof] == None:
+        for idof in range(len(solution)):    
+            if not solution[idof] == None:
 
                 # Ktマトリクスからi列を抽出する
                 vecx = np.array(Kt[:, idof]).flatten()
 
                 # 変位ベクトルi列の影響を荷重ベクトルに適用する
-                Rc = Rc - physical_field[idof] * vecx
+                Rc = Rc - solution[idof] * vecx
 
                 # Ktマトリクスのi行、i列を全て0にし、i行i列の値を1にする
                 Ktc[:, idof] = 0.0
@@ -214,9 +214,9 @@ class FEM1d:
                 Ktc[idof, idof] = 1.0
         
         # 強制変位量を方程式の右辺へ格納する
-        for idof in range(len(physical_field)):
-            if not physical_field[idof] == None:
-                Rc[idof] = physical_field[idof]
+        for idof in range(len(solution)):
+            if not solution[idof] == None:
+                Rc[idof] = solution[idof]
 
         return Ktc, Rc
 
@@ -306,8 +306,8 @@ class FEM1d:
             f.write("-" * columNum * 2 + "\n")
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
-                physical_field = self.physical_field_list[i]
-                strXDisp = str(format(physical_field[j], floatDigits).rjust(columNum))
+                solution = self.solution_list[i]
+                strXDisp = str(format(solution[j], floatDigits).rjust(columNum))
                 f.write(strNo + strXDisp + "\n")            
             f.write("\n")
 

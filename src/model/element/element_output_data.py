@@ -5,7 +5,7 @@ class ElementOutputData:
 
     # コンストラクタ
     # element        : 要素のクラス
-    # elem_physical_field    : 要素節点の変位のリスト
+    # elem_solution    : 要素節点の変位のリスト
     # vecStressList  : 積分点の応力のリスト(np.array型のリスト)
     # vecEStrainList : 積分点の弾性ひずみのリスト(np.array型のリスト)
     # vecPStrainList : 積分点の塑性ひずみのリスト(np.array型のリスト)

@@ -70,9 +70,9 @@ class D1T2:
     
     #---------------------------------------------------------------------
     # 構成則の情報を更新する
-    # elem_physical_field : 要素節点の変位ベクトル(np.array型)
+    # elem_solution : 要素節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
-    def compute_constitutive_law(self, elem_physical_field):
+    def compute_constitutive_law(self, elem_solution):
 
         # 積分点ループ
         for ip in range(self.ipNum):
@@ -81,7 +81,7 @@ class D1T2:
             matB = self.makeBmatrix(ip)
 
             # 全ひずみを求める
-            strain = np.array(matB @ elem_physical_field).flatten()
+            strain = np.array(matB @ elem_solution).flatten()
 
             # リターンマッピング法により、応力、塑性ひずみ、降伏判定を求める
             self.material[ip].compute_stress_and_tangent_matrix(strain)

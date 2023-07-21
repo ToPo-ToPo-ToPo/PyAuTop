@@ -11,7 +11,9 @@ import numpy.linalg as LA
 from src.material.dmatrix import Dmatrix
 from src.model.element.element_output_data import ElementOutputData
 
+#=============================================================================
 # 6面体8節点要素のクラス
+#=============================================================================
 class C3D8:
     # コンストラクタ
     # no              : 要素番号
@@ -38,36 +40,40 @@ class C3D8:
                             np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0)])
         
         # 要素内の変位を初期化する
-        self.physical_field = np.zeros(self.num_node * self.num_dof_at_node)   # 要素内の変位
+        self.solution = np.zeros(self.num_node * self.num_dof_at_node)   # 要素内の変位
 
         # 材料モデルを初期化する
         for ip in range(self.ipNum):
             self.material.append(material)
 
+    #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKetを作成する
+    #---------------------------------------------------------------------
     def makeKetmatrix(self):
 
-        # ヤコビ行列を計算する
-        matJ = []
-        for i in range(self.ipNum):
-            matJ.append(self.makeJmatrix(self.ai[i], self.bi[i], self.ci[i]))
-
-        # Bbarマトリクスを計算する
-        matBbar = []
-        for i in range(self.ipNum):
-            matBbar.append(self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i]))
-
-        # Ketマトリクスをガウス積分で計算する
+        # 初期化
         matKet = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
-        for i in range(self.ipNum):
-            matKet += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].matD @ matBbar[i] * LA.det(matJ[i])
+
+        # 積分点ループ
+        for ip in range(self.ipNum):
+
+            # ヤコビ行列を計算する
+            matJ = self.makeJmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # Bbarマトリクスを計算する
+            matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # 要素剛性行列Keを計算する
+            matKet += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].matD @ matBbar * LA.det(matJ)
 
         return matKet
 
+    #---------------------------------------------------------------------
     # ヤコビ行列を計算する
     # a : a座標値
     # b : b座標値
     # c : c座標値
+    #---------------------------------------------------------------------
     def makeJmatrix(self, a, b, c):
 
          # dNdabを計算する
@@ -92,10 +98,12 @@ class C3D8:
 
         return matJ
 
+    #---------------------------------------------------------------------
     # Bマトリクスを作成する
     # a : a座標値
     # b : b座標値
     # c : c座標値
+    #---------------------------------------------------------------------
     def makeBmatrix(self, a, b, c):
 
          # dNdabcの行列を計算する
@@ -120,10 +128,12 @@ class C3D8:
 
         return matB
 
+    #---------------------------------------------------------------------
     # Bbarマトリクスを作成する
     # a : a座標値
     # b : b座標値
     # c : c座標値
+    #---------------------------------------------------------------------
     def makeBbarmatrix(self, a, b, c):
 
         # Bマトリクスを作成する
@@ -140,10 +150,12 @@ class C3D8:
 
         return matBbar
 
+    #---------------------------------------------------------------------
     # Bvマトリクスを作成する
     # a : a座標値
     # b : b座標値
     # c : c座標値
+    #---------------------------------------------------------------------
     def makeBvmatrix(self, a, b, c):
 
          # dNdabcの行列を計算する
@@ -169,7 +181,9 @@ class C3D8:
 
         return matBv
 
+    #---------------------------------------------------------------------
     # Bvbarマトリクスを作成する
+    #---------------------------------------------------------------------
     def makeBvbarmatrix(self):
 
         # 体積を計算する
@@ -193,10 +207,12 @@ class C3D8:
 
         return Bvbar
 
+    #---------------------------------------------------------------------
     # dNdabcの行列を計算する
     # a : a座標値
     # b : b座標値
     # c : c座標値
+    #---------------------------------------------------------------------
     def makedNdabc(self, a, b, c):
 
         # dNi/da, dNi/db, dNi/dcを計算する
@@ -232,7 +248,9 @@ class C3D8:
 
         return dNdabc
 
+    #---------------------------------------------------------------------
     # 体積を求める
+    #---------------------------------------------------------------------
     def getVolume(self):
 
         # ヤコビ行列を計算する
@@ -247,27 +265,41 @@ class C3D8:
 
         return volume
 
-
+    #---------------------------------------------------------------------
     # 要素内の変数を更新する
-    # physical_field : 要素節点の変位ベクトル(np.array型)
+    # solution : 要素節点の変位ベクトル(np.array型)
     # incNo   : インクリメントNo
-    def update(self, physical_field, incNo):
-        
-        # 積分点ループ
-        for i in range(self.ipNum):
-            
-            # Bマトリックスを作成
-            matBbar = self.makeBbarmatrix(self.ai[i], self.bi[i], self.ci[i])
-            
-            # 構成則の内部変数の更新
-            self.material[i].update(matBbar, physical_field, incNo)
+    #---------------------------------------------------------------------
+    def compute_constitutive_law(self, elem_solution):
         
         # 要素内変位の更新
-        self.physical_field = physical_field
-        #self.incNo = incNo
+        self.solution = elem_solution
 
+        # 積分点ループ
+        for ip in range(self.ipNum):
+            
+            # Bマトリックスを作成
+            matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+            
+            # 構成則の内部変数の更新
+            self.material[ip].compute_stress_and_tangent_matrix(matBbar, elem_solution)
+    
+    #---------------------------------------------------------------------
+    # 要素内の変数を更新する
+    # solution : 要素節点の変位ベクトル(np.array型)
+    # incNo   : インクリメントNo
+    #---------------------------------------------------------------------
+    def update_constitutive_law(self):
 
+        # 積分点ループ
+        for ip in range(self.ipNum):
+            
+            # 構成則の内部変数の更新
+            self.material[ip].update()
+        
+    #---------------------------------------------------------------------
     # 内力ベクトルqを作成する
+    #---------------------------------------------------------------------
     def makeqVector(self):
 
         # ヤコビ行列を計算する
@@ -283,7 +315,7 @@ class C3D8:
         # 内力ベクトルqを計算する
         vecq = np.zeros(self.num_dof_at_node * self.num_node)
         for i in range(self.ipNum):
-            vecq += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].vecStressList * LA.det(matJ[i])
+            vecq += self.w1[i] * self.w2[i] * self.w3[i] * matBbar[i].T @ self.material[i].vecStress * LA.det(matJ[i])
 
         return vecq
 

@@ -31,14 +31,14 @@ class LinearFEM:
             raise ValueError("有限要素法の計算に失敗しました。")
 
         # 変位ベクトルを計算する
-        physical_field = LA.solve(matKc, vecfc)
-        self.physical_field = physical_field
+        solution = LA.solve(matKc, vecfc)
+        self.solution = solution
 
         # 節点反力を計算する
-        vecRF = np.array(matK @ physical_field - vecf).flatten()
+        vecRF = np.array(matK @ solution - vecf).flatten()
         self.vecRF = vecRF
 
-        return physical_field, vecRF
+        return solution, vecRF
 
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
     def make_force_vector(self):
@@ -81,7 +81,7 @@ class LinearFEM:
     # matK         : 剛性マトリクス
     # vecf         : 荷重ベクトル
     # vecBoundDisp : 節点の境界条件の変位ベクトル
-    # physical_field      : 全節点の変位ベクトル(np.array型)
+    # solution      : 全節点の変位ベクトル(np.array型)
     def set_bound_condition(self, matKt, vecf):
 
         matKtc = np.copy(matKt)
@@ -208,11 +208,11 @@ class LinearFEM:
         f.write("-" * columNum * 5 + "\n")
         for i in range(len(self.nodes)):
             strNo = str(i + 1).rjust(columNum)
-            mag = np.linalg.norm(np.array((self.physical_field[self.num_dof_at_node * i], self.physical_field[self.num_dof_at_node * i + 1], self.physical_field[self.num_dof_at_node * i + 2])))
+            mag = np.linalg.norm(np.array((self.solution[self.num_dof_at_node * i], self.solution[self.num_dof_at_node * i + 1], self.solution[self.num_dof_at_node * i + 2])))
             strMag = str(format(mag, floatDigits).rjust(columNum))
-            strXDisp = str(format(self.physical_field[self.num_dof_at_node * i], floatDigits).rjust(columNum))
-            strYDisp = str(format(self.physical_field[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
-            strZDisp = str(format(self.physical_field[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
+            strXDisp = str(format(self.solution[self.num_dof_at_node * i], floatDigits).rjust(columNum))
+            strYDisp = str(format(self.solution[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
+            strZDisp = str(format(self.solution[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
             f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
         f.write("\n")
 
