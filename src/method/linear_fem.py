@@ -10,7 +10,7 @@ class LinearFEM:
     def __init__(self, nodes, elements, bound):
 
         # インスタンス変数を定義する
-        self.num_dof_at_node = 3            # 節点の自由度
+        self.num_dof_at_node = 3    # 節点の自由度
         self.nodes = nodes          # 節点のリスト
         self.elements = elements    # 要素のリスト
         self.bound = bound          # 境界条件

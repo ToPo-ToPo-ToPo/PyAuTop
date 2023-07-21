@@ -7,7 +7,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from src.model.node import Node
-from src.material.elasto_plastic_von_mises_solid import ElastoPlasticVonMisesSolid
+from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
 from src.method.nonliear_fem import NonlinearFEM
 from src.model.element.C3D8 import C3D8
