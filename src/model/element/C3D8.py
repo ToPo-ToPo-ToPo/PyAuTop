@@ -48,9 +48,9 @@ class C3D8:
             self.material.append(copy.deepcopy(material))
 
     #---------------------------------------------------------------------
-    # 要素接線剛性マトリクスKetを作成する
+    # 要素接線剛性マトリクスKeを作成する
     #---------------------------------------------------------------------
-    def makeKetmatrix(self):
+    def makeKematrix(self):
 
         # 初期化
         Ke = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])

@@ -642,8 +642,8 @@ def main():
     bound.add_force(146, 0.0, 0.0, -1e9)
 
     # 解析を行う
-    fem = LinearFEM(nodes, elems, bound)
-    fem.analysis()
+    fem = LinearFEM(nodes, elems, bound, 1)
+    fem.run()
     fem.output_txt("../../output/C3D4_test")
 
 if __name__ == '__main__':

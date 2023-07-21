@@ -1,13 +1,23 @@
+from os.path import dirname, abspath
+import sys
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
 import numpy as np
 import numpy.linalg as LA
-from boundary import Boundary
+from src.method.fem_base import FEMBase
+from src.boundary import Boundary
 
-class LinearFEM:
+#=============================================================================
+# 線形FEM解析のクラス
+#=============================================================================
+class LinearFEM(FEMBase):
     # コンストラクタ
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
     # elements : 要素は種類ごとにソートされている前提(C3D4型のリスト)
     # bound    : 境界条件(d2Boundary型)
-    def __init__(self, nodes, elements, bound):
+    def __init__(self, nodes, elements, bound, num_step):
 
         # インスタンス変数を定義する
         self.num_dof_at_node = 3    # 節点の自由度
@@ -15,32 +25,66 @@ class LinearFEM:
         self.elements = elements    # 要素のリスト
         self.bound = bound          # 境界条件
 
+        self.num_step = num_step    # インクリメント数
+
+    #---------------------------------------------------------------------
     # 解析を行う
-    def analysis(self):
+    #---------------------------------------------------------------------
+    def run(self):
+
+        # 定義
+        self.solution_list = []  # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.Freact_list = []    # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
+
+        # 荷重をインクリメント毎に分割する
+        Fext_list = []
+        for istep in range(self.num_step):
+            Fext_list.append(self.make_force_vector() * (istep + 1) / self.num_step)
+
+        # 変位ベクトルと残差ベクトルの定義
+        solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
 
         # 境界条件を考慮しないKマトリクスを作成する
-        matK = self.makeKmatrix()
+        K = self.make_K()
 
-        # 荷重ベクトルを作成する
-        vecf = self.make_force_vector()
+        # 増分解析ループ
+        for istep in range(self.num_step):
+            
+            # 計算中の情報を出力
+            print('')
+            print('============================================================')
+            print(' Incremental step' + str(istep+1))
+            print('------------------------------------------------------------')
+            print(' ||Fext||                ||u||                              ')
+            print('------------------------------------------------------------')
 
-        # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
-        matKc, vecfc = self.set_bound_condition(matK, vecf)
+            # i+1番インクリメントの荷重を設定する
+            Fext = Fext_list[istep]
 
-        if np.isclose(LA.det(matKc), 0.0) :
-            raise ValueError("有限要素法の計算に失敗しました。")
+            # dirichlet境界の規定値を設定する
+            solution_bar = self.bound.make_disp_vector()
 
-        # 変位ベクトルを計算する
-        solution = LA.solve(matKc, vecfc)
-        self.solution = solution
+            # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
+            lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
 
-        # 節点反力を計算する
-        vecRF = np.array(matK @ solution - vecf).flatten()
-        self.vecRF = vecRF
+            # lhs_cの確認
+            if np.isclose(LA.det(lhs_c), 0.0) :
+                raise ValueError("有限要素法の計算に失敗しました。")
 
-        return solution, vecRF
+            # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
+            solution = LA.solve(lhs_c, rhs_c)
+            self.solution_list.append(solution.copy())
 
+            # 節点反力を計算し、インクリメントの最終的な節点反力を格納する
+            Freact = np.array(K @ solution - Fext).flatten()
+            self.Freact_list.append(Freact)
+
+            # 計算中の情報を出力
+            print('{:.4e}'.format(LA.norm(Fext)) + '      ' + '{:.4e}'.format(LA.norm(solution)) + '      ')
+ 
+    #---------------------------------------------------------------------
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
+    #---------------------------------------------------------------------
     def make_force_vector(self):
 
         # 節点に負荷する荷重ベクトルを作成する
@@ -48,8 +92,11 @@ class LinearFEM:
 
         # 等価節点力の荷重ベクトルを作成する
         vecEqNodeForce = np.zeros(len(self.nodes) * self.num_dof_at_node)
+        
         for elem in self.elements:
+            
             vecElemEqNodeForce = elem.makeEqNodeForceVector()
+            
             for i in range(len(elem.nodes)):
                 for j in range(self.num_dof_at_node):
                     vecEqNodeForce[self.num_dof_at_node * (elem.nodes[i].no - 1) + j] += vecElemEqNodeForce[self.num_dof_at_node * i + j]
@@ -59,56 +106,9 @@ class LinearFEM:
 
         return vecf
 
-    # 境界条件を考慮しないKマトリクスを作成する
-    def makeKmatrix(self):
-
-        matK = np.matrix(np.zeros((len(self.nodes) * self.num_dof_at_node, len(self.nodes) * self.num_dof_at_node)))
-        for elem in self.elements:
-
-            # ketマトリクスを計算する
-            matKe = elem.makeKematrix()
-
-            # Ktマトリクスに代入する
-            for c in range(len(elem.nodes) * self.num_dof_at_node):
-                ct = (elem.nodes[c // self.num_dof_at_node].no - 1) * self.num_dof_at_node + c % self.num_dof_at_node
-                for r in range(len(elem.nodes) * self.num_dof_at_node):
-                    rt = (elem.nodes[r // self.num_dof_at_node].no - 1) * self.num_dof_at_node + r % self.num_dof_at_node
-                    matK[ct, rt] += matKe[c, r]
-
-        return matK
-
-    # Kマトリクス、荷重ベクトルに境界条件を考慮する
-    # matK         : 剛性マトリクス
-    # vecf         : 荷重ベクトル
-    # vecBoundDisp : 節点の境界条件の変位ベクトル
-    # solution      : 全節点の変位ベクトル(np.array型)
-    def set_bound_condition(self, matKt, vecf):
-
-        matKtc = np.copy(matKt)
-        vecfc = np.copy(vecf)
-        vecBoundDisp = self.bound.make_disp_vector()
-
-        # 単点拘束条件を考慮したKマトリクス、荷重ベクトルを作成する
-        for i in range(len(vecBoundDisp)):
-            if not vecBoundDisp[i] == None:
-                # Kマトリクスからi列を抽出する
-                vecx = np.array(matKt[:, i]).flatten()
-
-                # 変位ベクトルi列の影響を荷重ベクトルに適用する
-                vecfc = vecfc - (vecBoundDisp[i]) * vecx
-
-                # Kマトリクスのi行、i列を全て0にし、i行i列の値を1にする
-                matKtc[:, i] = 0.0
-                matKtc[i, :] = 0.0
-                matKtc[i, i] = 1.0
-                
-        for i in range(len(vecBoundDisp)):
-            if not vecBoundDisp[i] == None:
-                vecfc[i] = vecBoundDisp[i]
-
-        return matKtc, vecfc
-
+    #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
+    #---------------------------------------------------------------------
     def output_txt(self, filePath):
 
         # ファイルを作成し、開く
@@ -201,34 +201,41 @@ class LinearFEM:
         f.write("**********************************\n")
         f.write("\n")
 
-        # 変位のデータを出力する
-        f.write("***** Displacement Data ******\n")
-        f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Displacement".rjust(columNum) +
-                "Y Displacement".rjust(columNum) + "Z Displacement".rjust(columNum) + "\n")
-        f.write("-" * columNum * 5 + "\n")
-        for i in range(len(self.nodes)):
-            strNo = str(i + 1).rjust(columNum)
-            mag = np.linalg.norm(np.array((self.solution[self.num_dof_at_node * i], self.solution[self.num_dof_at_node * i + 1], self.solution[self.num_dof_at_node * i + 2])))
-            strMag = str(format(mag, floatDigits).rjust(columNum))
-            strXDisp = str(format(self.solution[self.num_dof_at_node * i], floatDigits).rjust(columNum))
-            strYDisp = str(format(self.solution[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
-            strZDisp = str(format(self.solution[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
-            f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
-        f.write("\n")
+        for i in range(self.num_step):
+            f.write("*Increment " + str(i + 1) + "\n")
+            f.write("\n")
 
-        # 反力のデータを出力する
-        f.write("***** Reaction Force Data ******\n")
-        f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + "Z Force".rjust(columNum) + "\n")
-        f.write("-" * columNum * 5 + "\n")
-        for i in range(len(self.nodes)):
-            strNo = str(i + 1).rjust(columNum)
-            mag = np.linalg.norm(np.array((self.vecRF[self.num_dof_at_node * i], self.vecRF[self.num_dof_at_node * i + 1], self.vecRF[self.num_dof_at_node * i + 2])))
-            strMag = str(format(mag, floatDigits).rjust(columNum))
-            strXForce = str(format(self.vecRF[self.num_dof_at_node * i], floatDigits).rjust(columNum))
-            strYForce = str(format(self.vecRF[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
-            strZForce = str(format(self.vecRF[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
-            f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
-        f.write("\n")
+            # 変位のデータを出力する
+            f.write("***** Displacement Data ******\n")
+            f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Displacement".rjust(columNum) +
+                    "Y Displacement".rjust(columNum) + "Z Displacement".rjust(columNum) + "\n")
+            f.write("-" * columNum * 5 + "\n")
+            for j in range(len(self.nodes)):
+                strNo = str(j + 1).rjust(columNum)
+                solution = self.solution_list[i]
+                mag = np.linalg.norm(np.array((solution[self.num_dof_at_node * j], solution[self.num_dof_at_node * j + 1], solution[self.num_dof_at_node * j + 2])))
+                strMag = str(format(mag, floatDigits).rjust(columNum))
+                strXDisp = str(format(solution[self.num_dof_at_node * j], floatDigits).rjust(columNum))
+                strYDisp = str(format(solution[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(solution[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
+            f.write("\n")
+
+            # 反力のデータを出力する
+            f.write("***** Reaction Force Data ******\n")
+            f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + 
+                    "Z Force".rjust(columNum) + "\n")
+            f.write("-" * columNum * 5 + "\n")
+            for j in range(len(self.nodes)):
+                strNo = str(j + 1).rjust(columNum)
+                vecRF = self.Freact_list[i]
+                mag = np.linalg.norm(np.array((vecRF[self.num_dof_at_node * j], vecRF[self.num_dof_at_node * j + 1], vecRF[self.num_dof_at_node * j + 2])))
+                strMag = str(format(mag, floatDigits).rjust(columNum))
+                strXForce = str(format(vecRF[self.num_dof_at_node * j], floatDigits).rjust(columNum))
+                strYForce = str(format(vecRF[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecRF[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
+            f.write("\n")
 
         # ファイルを閉じる
         f.close()

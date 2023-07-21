@@ -1,12 +1,19 @@
 #https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
+from os.path import dirname, abspath
+import sys
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
 import numpy as np
 import numpy.linalg as LA
+from src.method.fem_base import FEMBase
 
 #=============================================================================
 #
 #=============================================================================
-class NonlinearFEM:
+class NonlinearFEM(FEMBase):
     # コンストラクタ
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
     # elements : 要素は種類ごとにソートされている前提(C3D８型のリスト)
@@ -19,19 +26,20 @@ class NonlinearFEM:
         self.nodes = nodes                 # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
         self.elements = elements           # 要素は種類ごとにソートされている前提(リスト)
         self.bound = bound                 # 境界条件(d2Boundary型)
+        
         self.num_step = num_step           # インクリメント数
         self.itr_max = 100                 # ニュートン法のイテレータの上限
+        
         self.rn = 1.0e-07                  # ニュートン法の残差力の収束判定のパラメータ
         self.cn = 1.0e-04                  # ニュートン法の変位の収束判定のパラメータ
 
     #---------------------------------------------------------------------
     # 陰解法で解析を行う
     #---------------------------------------------------------------------
-    def analysis(self):
+    def run(self):
 
-        self.solution_list = []           # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
-        self.Freact_list = []             # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
-        self.elem_output_data_list = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
+        self.solution_list = []   # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.Freact_list = []     # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
 
         # 荷重をインクリメント毎に分割する
         Fext_list = []
@@ -60,7 +68,7 @@ class NonlinearFEM:
             solution_bar = self.bound.make_disp_vector()       # dirichlet境界の規定値
 
             # 接線剛性マトリクスKtを作成する
-            Kt = self.make_Kt()
+            Kt = self.make_K()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
             if istep == 0:
@@ -91,7 +99,7 @@ class NonlinearFEM:
                 self.update_element_data(solution)
 
                 # 新たな接線剛性マトリクスKtを作成する
-                Kt = self.make_Kt()
+                Kt = self.make_K()
 
                 # 新たな残差力ベクトルRを求める
                 Fint = self.make_Fint()
@@ -160,36 +168,6 @@ class NonlinearFEM:
             elem.update_constitutive_law() 
 
     #---------------------------------------------------------------------
-    # 接線剛性マトリクスKtを作成する
-    #---------------------------------------------------------------------
-    def make_Kt(self):
-
-        # 初期化
-        Kt = np.matrix(np.zeros((len(self.nodes) * self.num_dof_at_node, len(self.nodes) * self.num_dof_at_node)))
-        
-        # 全要素ループ
-        for elem in self.elements:
-
-            # ketマトリクスを計算する
-            Ke = elem.makeKetmatrix()
-
-            # Ktマトリクスに代入する
-            for c in range(len(elem.nodes) * self.num_dof_at_node):
-                
-                # 自由度番号の取得
-                ct = (elem.nodes[c // self.num_dof_at_node].no - 1) * self.num_dof_at_node + c % self.num_dof_at_node
-                
-                for r in range(len(elem.nodes) * self.num_dof_at_node):
-                    
-                    # 自由度番号の取得
-                    rt = (elem.nodes[r // self.num_dof_at_node].no - 1) * self.num_dof_at_node + r % self.num_dof_at_node
-                    
-                    # アセンブリング
-                    Kt[ct, rt] += Ke[c, r]
-
-        return Kt
-
-    #---------------------------------------------------------------------
     # 内力ベクトルFintを作成する
     #---------------------------------------------------------------------
     def make_Fint(self):
@@ -219,38 +197,6 @@ class NonlinearFEM:
         vecf = self.bound.make_force_vector()
 
         return vecf
-
-    #---------------------------------------------------------------------
-    # Kマトリクス、荷重ベクトルに境界条件を考慮する
-    # matKt        : 接線剛性マトリクス
-    # vecR         : 残差力ベクトル
-    # vecBoundDisp : 節点の境界条件の変位ベクトル
-    # solution      : 全節点の変位ベクトル(np.array型)
-    #---------------------------------------------------------------------
-    def set_bound_condition(self, matKt, vecR, vecBoundDisp, solution):
-
-        matKtc = np.copy(matKt)
-        vecRc = np.copy(vecR)
-
-        # 単点拘束条件を考慮したKマトリクス、荷重ベクトルを作成する
-        for i in range(len(vecBoundDisp)):
-            if not vecBoundDisp[i] == None:
-                # Kマトリクスからi列を抽出する
-                vecx = np.array(matKt[:, i]).flatten()
-
-                # 変位ベクトルi列の影響を荷重ベクトルに適用する
-                vecRc = vecRc - (vecBoundDisp[i] - solution[i]) * vecx
-
-                # Kマトリクスのi行、i列を全て0にし、i行i列の値を1にする
-                matKtc[:, i] = 0.0
-                matKtc[i, :] = 0.0
-                matKtc[i, i] = 1.0
-
-        for i in range(len(vecBoundDisp)):
-            if not vecBoundDisp[i] == None:
-                vecRc[i] = vecBoundDisp[i] - solution[i]
-
-        return matKtc, vecRc
 
     #---------------------------------------------------------------------
     # ニュートンラプソン法の収束判定を行う

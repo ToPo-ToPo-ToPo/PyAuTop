@@ -69,7 +69,7 @@ def main():
 
     # 解析を実行する
     fem = NonlinearFEM(nodes, elems, bound, 1)
-    fem.analysis()
+    fem.run()
 
     # 結果を出力する
     fem.output_txt("../../output/C3D8_test")

@@ -737,6 +737,8 @@
 *          Result Data           *
 **********************************
 
+*Increment 1
+
 ***** Displacement Data ******
               NodeNo           Magnitude      X Displacement      Y Displacement      Z Displacement
 ----------------------------------------------------------------------------------------------------
