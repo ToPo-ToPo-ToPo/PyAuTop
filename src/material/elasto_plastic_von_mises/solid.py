@@ -31,7 +31,6 @@ class ElastoPlasticVonMisesSolid:
         
         self.itr_max = 100                               # ニュートン・ラプソン法の収束回数の上限
         self.tol = 1.0e-06                               # ニュートン・ラプソン法の収束基準
-        self.incNo = 0                                   # インクリメントのNo
 
         # 関連する変数を初期化する
         self.yieldFlg = False                        # 要素が降伏しているか判定するフラグ
@@ -60,7 +59,7 @@ class ElastoPlasticVonMisesSolid:
         vecStrain = self.make_strain_vector(matB, solution)
 
         # リターンマッピングアルゴリズムによって応力、塑性ひずみ、接線剛性などを求める
-        vecStress, vecEStrain, vecPStrain, ePStrain, matDep = self.return_mapping_3D(vecStrain, self.vecPrevPStrain, self.prevEPStrain)
+        vecStress, vecEStrain, vecPStrain, ePStrain, matDep, yield_flag = self.return_mapping_3D(vecStrain, self.vecPrevPStrain, self.prevEPStrain)
 
         # 変数を保存
         self.vecStress = vecStress
@@ -68,6 +67,7 @@ class ElastoPlasticVonMisesSolid:
         self.vecPStrain = vecPStrain
         self.ePStrain = ePStrain
         self.matD = matDep
+        self.yieldFlg = yield_flag
         
         # mises応力を求める
         self.mises = self.mises_stress(vecStress)
@@ -194,7 +194,7 @@ class ElastoPlasticVonMisesSolid:
         else:
             matDep = Dmatrix(self.young, self.poisson).make_De_matrix()
 
-        return vecStress, vecEStrain, vecPStrain, ePStrain, matDep
+        return vecStress, vecEStrain, vecPStrain, ePStrain, matDep, yieldFlg
     
     #---------------------------------------------------------------------
     # ニュートンラプソン法収束後の内部変数の更新
