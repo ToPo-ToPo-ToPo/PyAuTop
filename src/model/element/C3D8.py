@@ -9,9 +9,6 @@ if parent_dir not in sys.path:
 import copy
 import numpy as np
 import numpy.linalg as LA
-from src.material.dmatrix import Dmatrix
-from src.model.element.element_output_data import ElementOutputData
-
 #=============================================================================
 # 6面体8節点要素のクラス
 #=============================================================================
@@ -50,7 +47,7 @@ class C3D8:
     #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKeを作成する
     #---------------------------------------------------------------------
-    def makeKematrix(self):
+    def make_K(self):
 
         # 初期化
         Ke = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
@@ -59,15 +56,37 @@ class C3D8:
         for ip in range(self.ipNum):
 
             # ヤコビ行列を計算する
-            matJ = self.makeJmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+            matJ = self.make_J_matrix(self.ai[ip], self.bi[ip], self.ci[ip])
 
             # Bbarマトリクスを計算する
-            matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+            matBbar = self.make_Bbar_matrix(self.ai[ip], self.bi[ip], self.ci[ip])
 
             # 要素剛性行列Keを計算する
             Ke += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].matD @ matBbar * LA.det(matJ)
 
         return Ke
+    
+    #---------------------------------------------------------------------
+    # 内力ベクトルFintを作成する
+    #---------------------------------------------------------------------
+    def make_Fint(self):
+
+        # 初期化
+        Fint_e = np.zeros(self.num_dof_at_node * self.num_node)
+
+        # 積分点ループ
+        for ip in range(self.ipNum):
+            
+            # ヤコビ行列を計算する
+            matJ = self.make_J_matrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # Bbarマトリクスを計算する
+            matBbar = self.make_Bbar_matrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # 内力ベクトルを計算する
+            Fint_e += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].vecStress * LA.det(matJ)
+
+        return Fint_e
     
     #---------------------------------------------------------------------
     # 等価節点力の荷重ベクトルを作成する
@@ -85,7 +104,7 @@ class C3D8:
 
             # 物体力による等価節点力を計算する
             if not self.vecGravity is None:
-                vecb = self.density * self.vecGravity   # 単位体積あたりの物体力のベクトル
+                vecb = self.material[ip].density * self.vecGravity   # 単位体積あたりの物体力のベクトル
                 N1 = 1 - self.ai - self.bi - self.ci
                 N2 = self.ai
                 N3 = self.bi
@@ -100,37 +119,15 @@ class C3D8:
         return Fb
     
     #---------------------------------------------------------------------
-    # 内力ベクトルqを作成する
-    #---------------------------------------------------------------------
-    def make_Fint(self):
-
-        # 初期化
-        Fint_e = np.zeros(self.num_dof_at_node * self.num_node)
-
-        # 積分点ループ
-        for ip in range(self.ipNum):
-            
-            # ヤコビ行列を計算する
-            matJ = self.makeJmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
-
-            # Bbarマトリクスを計算する
-            matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
-
-            # 内力ベクトルを計算する
-            Fint_e += self.w1[ip] * self.w2[ip] * self.w3[ip] * matBbar.T @ self.material[ip].vecStress * LA.det(matJ)
-
-        return Fint_e
-    
-    #---------------------------------------------------------------------
     # ヤコビ行列を計算する
     # a : a座標値
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    def makeJmatrix(self, a, b, c):
+    def make_J_matrix(self, a, b, c):
 
          # dNdabを計算する
-        matdNdabc = self.makedNdabc(a, b, c)
+        matdNdabc = self.make_dNda(a, b, c)
 
         # xi, yi, ziの行列を計算する
         matxiyizi = np.array([[self.nodes[0].x, self.nodes[0].y, self.nodes[0].z],
@@ -157,16 +154,16 @@ class C3D8:
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    def makeBmatrix(self, a, b, c):
+    def make_B_matrix(self, a, b, c):
 
-         # dNdabcの行列を計算する
-        matdNdabc = self.makedNdabc(a, b, c)
+        # dNdaの行列を計算する
+        dNda = self.make_dNda(a, b, c)
 
-         # ヤコビ行列を計算する
-        matJ = self.makeJmatrix(a, b, c)
+        # ヤコビ行列を計算する
+        matJ = self.make_J_matrix(a, b, c)
 
         # matdNdxyz = matJinv * matdNdabc
-        matdNdxyz = LA.solve(matJ, matdNdabc)
+        matdNdxyz = LA.solve(matJ, dNda)
 
         # Bマトリクスを計算する
         matB = np.empty((6,0))
@@ -187,16 +184,16 @@ class C3D8:
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    def makeBbarmatrix(self, a, b, c):
+    def make_Bbar_matrix(self, a, b, c):
 
         # Bマトリクスを作成する
-        matB = self.makeBmatrix(a, b, c)
+        matB = self.make_B_matrix(a, b, c)
 
         # Bvマトリクスを作成する
-        matBv = self.makeBvmatrix(a, b, c)
+        matBv = self.make_Bv_matrix(a, b, c)
 
         # Bvbarマトリクスを作成する
-        matBvbar = self.makeBvbarmatrix()
+        matBvbar = self.make_Bvbar_matrix()
 
         # Bbarマトリクスを計算する
         matBbar = matBvbar + matB - matBv
@@ -209,13 +206,13 @@ class C3D8:
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    def makeBvmatrix(self, a, b, c):
+    def make_Bv_matrix(self, a, b, c):
 
          # dNdabcの行列を計算する
-        matdNdabc = self.makedNdabc(a, b, c)
+        matdNdabc = self.make_dNda(a, b, c)
 
          # ヤコビ行列を計算する
-        matJ = self.makeJmatrix(a, b, c)
+        matJ = self.make_J_matrix(a, b, c)
 
         # matdNdxyz = matJinv * matdNdabc
         matdNdxyz = LA.solve(matJ, matdNdabc)
@@ -237,20 +234,20 @@ class C3D8:
     #---------------------------------------------------------------------
     # Bvbarマトリクスを作成する
     #---------------------------------------------------------------------
-    def makeBvbarmatrix(self):
+    def make_Bvbar_matrix(self):
 
         # 体積を計算する
-        v = self.getVolume()
+        v = self.get_volume()
 
         # Bvマトリクスを計算する
         matBv = []
         for i in range(self.ipNum):
-            matBv.append(self.makeBvmatrix(self.ai[i], self.bi[i], self.ci[i]))
+            matBv.append(self.make_Bv_matrix(self.ai[i], self.bi[i], self.ci[i]))
 
         # ヤコビ行列を計算する
         matJ = []
         for i in range(self.ipNum):
-            matJ.append(self.makeJmatrix(self.ai[i], self.bi[i], self.ci[i]))
+            matJ.append(self.make_J_matrix(self.ai[i], self.bi[i], self.ci[i]))
 
         # ガウス積分でBvbarマトリクスを計算する
         Bvbar = np.zeros([6, self.num_node * self.num_dof_at_node])
@@ -261,12 +258,12 @@ class C3D8:
         return Bvbar
 
     #---------------------------------------------------------------------
-    # dNdabcの行列を計算する
+    # dNdxの行列を計算する
     # a : a座標値
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    def makedNdabc(self, a, b, c):
+    def make_dNda(self, a, b, c):
 
         # dNi/da, dNi/db, dNi/dcを計算する
         dN1da = -0.125 * (1.0 - b) * (1.0 - c)
@@ -294,22 +291,22 @@ class C3D8:
         dN7dc = 0.125 * (1.0 + a) * (1.0 + b)
         dN8dc = 0.125 * (1.0 - a) * (1.0 + b)
 
-        # dNdabcを計算する
-        dNdabc = np.array([[dN1da, dN2da, dN3da, dN4da, dN5da, dN6da, dN7da, dN8da],
-                           [dN1db, dN2db, dN3db, dN4db, dN5db, dN6db, dN7db, dN8db],
-                           [dN1dc, dN2dc, dN3dc, dN4dc, dN5dc, dN6dc, dN7dc, dN8dc]])
+        # dNdaを計算する
+        dNda = np.array([[dN1da, dN2da, dN3da, dN4da, dN5da, dN6da, dN7da, dN8da],
+                         [dN1db, dN2db, dN3db, dN4db, dN5db, dN6db, dN7db, dN8db],
+                         [dN1dc, dN2dc, dN3dc, dN4dc, dN5dc, dN6dc, dN7dc, dN8dc]])
 
-        return dNdabc
+        return dNda
 
     #---------------------------------------------------------------------
     # 体積を求める
     #---------------------------------------------------------------------
-    def getVolume(self):
+    def get_volume(self):
 
         # ヤコビ行列を計算する
         matJ = []
         for i in range(self.ipNum):
-            matJ.append(self.makeJmatrix(self.ai[i], self.bi[i], self.ci[i]))
+            matJ.append(self.make_J_matrix(self.ai[i], self.bi[i], self.ci[i]))
 
         # ガウス積分で体積を計算する
         volume = 0
@@ -319,9 +316,8 @@ class C3D8:
         return volume
 
     #---------------------------------------------------------------------
-    # 要素内の変数を更新する
-    # solution : 要素節点の変位ベクトル(np.array型)
-    # incNo   : インクリメントNo
+    # 構成則の計算を行う
+    # elem_solution : 要素節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
     def compute_constitutive_law(self, elem_solution):
         
@@ -332,15 +328,13 @@ class C3D8:
         for ip in range(self.ipNum):
             
             # Bマトリックスを作成
-            matBbar = self.makeBbarmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+            matBbar = self.make_Bbar_matrix(self.ai[ip], self.bi[ip], self.ci[ip])
             
             # 構成則の内部変数の更新
             self.material[ip].compute_stress_and_tangent_matrix(matBbar, elem_solution)
     
     #---------------------------------------------------------------------
-    # 要素内の変数を更新する
-    # solution : 要素節点の変位ベクトル(np.array型)
-    # incNo   : インクリメントNo
+    # 構成則の変数を更新する
     #---------------------------------------------------------------------
     def update_constitutive_law(self):
 
@@ -349,16 +343,3 @@ class C3D8:
             
             # 構成則の内部変数の更新
             self.material[ip].update()
-
-    # 要素の出力データを作成する
-    def makeOutputData(self):
-
-        a = 1
-        #output = ElementOutputData(self,
-        #                           self.vecStressList,
-        #                           self.vecEStrainList,
-        #                           self.vecPStrainList,
-        #                           self.ePStrainList,
-        #                           self.misesList)
-
-        #return output

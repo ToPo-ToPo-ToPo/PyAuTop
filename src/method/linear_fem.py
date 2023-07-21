@@ -113,7 +113,7 @@ class LinearFEM(FEMBase):
         f.write("\n")
 
         # 要素情報を出力する
-        nodeNoColumNum = 36
+        '''nodeNoColumNum = 36
         f.write("***** Element Data ******\n")
         f.write("No".rjust(columNum) + "Type".rjust(columNum) + "Node No".rjust(nodeNoColumNum) + 
                 "Young".rjust(columNum) + "Poisson".rjust(columNum) + "Density".rjust(columNum) + "\n")
@@ -133,7 +133,7 @@ class LinearFEM(FEMBase):
             if not elem.density is None:
                 strDensity = str(format(elem.density, floatDigits).rjust(columNum))
             f.write(strNo + strType + strNodeNo + strYoung + strPoisson + strDensity + "\n")
-        f.write("\n")
+        f.write("\n")'''
 
         # 単点拘束情報を出力する
         f.write("***** SPC Constraint Data ******\n")

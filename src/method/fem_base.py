@@ -39,7 +39,7 @@ class FEMBase(FEMInterface):
         for elem in self.elements:
 
             # ketマトリクスを計算する
-            Ke = elem.makeKematrix()
+            Ke = elem.make_K()
 
             # Ktマトリクスに代入する
             for c in range(len(elem.nodes) * self.num_dof_at_node):

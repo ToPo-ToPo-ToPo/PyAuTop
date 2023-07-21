@@ -28,10 +28,10 @@ class NonlinearFEM(FEMBase):
         self.bound = bound                 # 境界条件(d2Boundary型)
         
         self.num_step = num_step           # インクリメント数
-        self.itr_max = 100                 # ニュートン法のイテレータの上限
+        self.itr_max = 20                  # ニュートン法のイテレータの上限
         
         self.rn = 1.0e-07                  # ニュートン法の残差力の収束判定のパラメータ
-        self.cn = 1.0e-04                  # ニュートン法の変位の収束判定のパラメータ
+        self.cn = 1.0e-06                  # ニュートン法の変位の収束判定のパラメータ
 
     #---------------------------------------------------------------------
     # 陰解法で解析を行う
@@ -45,6 +45,22 @@ class NonlinearFEM(FEMBase):
         Fext_list = []
         for istep in range(self.num_step):
             Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
+        
+        # Dirichiret境界の規定値をインクリメント毎に分割する
+        solution_bar_list = []
+        for istep in range(self.num_step):
+
+            # 初期化
+            solution_bar_tmp = self.bound.make_disp_vector().copy()
+
+            # 境界条件を設定した節点のみを対象にする
+            for i in range(len(solution_bar_tmp)):
+                if not solution_bar_tmp[i] == None:
+                    solution_bar_tmp[i] *= (istep + 1) / self.num_step
+            
+            # 保存
+            solution_bar_list.append(solution_bar_tmp.copy())
+
 
         # 変位ベクトルと残差ベクトルの定義
         solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
@@ -64,8 +80,8 @@ class NonlinearFEM(FEMBase):
 
             # 初期化
             solution_first = solution.copy()                   # 初期の全節点の変位ベクトル
-            Fext = Fext_list[istep]                            # i+1番インクリメントの荷重
-            solution_bar = self.bound.make_disp_vector()       # dirichlet境界の規定値
+            Fext = Fext_list[istep]                            # istep番インクリメントの荷重
+            solution_bar = solution_bar_list[istep]            # istep番目のdirichlet境界の規定値
 
             # 接線剛性マトリクスKtを作成する
             Kt = self.make_K()
@@ -83,7 +99,7 @@ class NonlinearFEM(FEMBase):
             residual0 = LA.norm(Rc)
 
             # ニュートン法による収束演算を行う
-            for iter in range(self.itr_max):
+            for iter in range(self.itr_max + 1):
 
                 # Ktcの逆行列が計算できるかチェックする
                 if np.isclose(LA.det(Ktc), 0.0):
@@ -109,7 +125,7 @@ class NonlinearFEM(FEMBase):
                 Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
 
                 # 収束判定に必要な変数を計算する
-                check_flag, solution_rate, residual_rate = self.check_convergence(Fint, Fext, Rc, solution, solution_first, delta_solution)
+                check_flag, solution_rate, residual_rate = self.check_convergence(Fint, Rc, solution, solution_first, delta_solution)
 
                 # 計算中の情報を出力
                 print(' ' + str(iter+1) + '      ' 
@@ -118,8 +134,10 @@ class NonlinearFEM(FEMBase):
                       + '{:.4e}'.format(solution_rate))
 
                 # 収束判定を行う
-                if(check_flag == True):
+                if check_flag == True:
                     break
+                if iter + 1 >= self.itr_max:
+                     raise ValueError("ニュートンラプソン法が収束しませんでした。")
 
             # 構成則の情報の更新
             self.update_constitutive_low()
@@ -191,13 +209,13 @@ class NonlinearFEM(FEMBase):
     #---------------------------------------------------------------------
     # ニュートンラプソン法の収束判定を行う
     #---------------------------------------------------------------------
-    def check_convergence(self, Fint, Fext, Rc, solution, solution_first, delta_solution):
+    def check_convergence(self, Fint, Rc, solution, solution_first, delta_solution):
         
         # 初期化
         check_flag = False
 
         # 残差ベクトルの全成分または変位増分がゼロの場合、収束とする
-        if np.allclose(Rc, 0.0) or np.isclose(LA.norm(delta_solution), 0.0):
+        if LA.norm(delta_solution) < self.cn * 1.0e-03 and LA.norm(Rc) < self.rn * 1.0e-03:
             check_flag = True
 
         # 増分変位における相対誤差を計算する

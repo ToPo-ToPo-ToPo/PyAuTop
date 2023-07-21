@@ -10,6 +10,7 @@ class Boundary:
         # インスタンス変数を定義する
         self.num_node = num_node                                             # 全節点数
         self.num_dof_at_node = 3                                             # 節点の自由度
+
         self.solution = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
         self.F = np.array(num_node * self.num_dof_at_node * [0.0])           # 荷重ベクトル
 
