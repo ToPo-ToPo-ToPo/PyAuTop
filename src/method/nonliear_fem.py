@@ -21,15 +21,15 @@ class NonlinearFEM:
         self.bound = bound                 # 境界条件(d2Boundary型)
         self.num_step = num_step           # インクリメント数
         self.itr_max = 100                 # ニュートン法のイテレータの上限
-        self.rn = 0.005                    # ニュートン法の残差力の収束判定のパラメータ
-        self.cn = 0.01                     # ニュートン法の変位の収束判定のパラメータ
+        self.rn = 1.0e-07                  # ニュートン法の残差力の収束判定のパラメータ
+        self.cn = 1.0e-04                  # ニュートン法の変位の収束判定のパラメータ
 
     #---------------------------------------------------------------------
     # 陰解法で解析を行う
     #---------------------------------------------------------------------
     def analysis(self):
 
-        self.solution_list = []     # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.solution_list = []           # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.Freact_list = []             # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
         self.elem_output_data_list = []   # インクリメント毎の要素出力のリスト(makeOutputData型のリストのリスト)
 
@@ -45,14 +45,19 @@ class NonlinearFEM:
         # 増分解析ループ
         for istep in range(self.num_step):
 
+            # 計算中の情報を出力
+            print('')
             print('============================================================')
-            print('Incremental step' + str(istep))
-            print('============================================================')
+            print(' Incremental step' + str(istep+1))
+            print('')
+            print('------------------------------------------------------------')
+            print(' Iter     ||R0||         ||R/R0||       ||δu/Δu||           ')
+            print('------------------------------------------------------------')
 
             # 初期化
             solution_first = solution.copy()                   # 初期の全節点の変位ベクトル
             Fext = Fext_list[istep]                            # i+1番インクリメントの荷重
-            vecBoundDisp = self.bound.make_disp_vector()
+            solution_bar = self.bound.make_disp_vector()       # dirichlet境界の規定値
 
             # 接線剛性マトリクスKtを作成する
             Kt = self.make_Kt()
@@ -64,7 +69,10 @@ class NonlinearFEM:
                 R = Fext_list[istep] - Fext_list[istep - 1]
 
             # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-            Ktc, Rc = self.set_bound_condition(Kt, R, vecBoundDisp, solution)
+            Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
+
+            # 初期の残差ノルムを計算する
+            residual0 = LA.norm(Rc)
 
             # ニュートン法による収束演算を行う
             for iter in range(self.itr_max):
@@ -90,10 +98,18 @@ class NonlinearFEM:
                 R = Fext - Fint
 
                 # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                Ktc, Rc = self.set_bound_condition(Kt, R, vecBoundDisp, solution)
+                Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
+
+                # 収束判定に必要な変数を計算する
+                check_flag, solution_rate, residual_rate = self.check_convergence(Fint, Fext, Rc, solution, solution_first, delta_solution)
+
+                # 計算中の情報を出力
+                print(' ' + str(iter+1) + '      ' 
+                      + '{:.4e}'.format(residual0) + '      ' 
+                      + '{:.4e}'.format(residual_rate) + '      ' 
+                      + '{:.4e}'.format(solution_rate))
 
                 # 収束判定を行う
-                check_flag = self.check_convergence(Fint, Fext, Rc, solution, solution_first, delta_solution)
                 if(check_flag == True):
                     break
 
@@ -244,35 +260,21 @@ class NonlinearFEM:
         # 初期化
         check_flag = False
 
-        # 収束判定を行う
         # 残差ベクトルの全成分または変位増分がゼロの場合、収束とする
         if np.allclose(Rc, 0.0) or np.isclose(LA.norm(delta_solution), 0.0):
             check_flag = True
-            return check_flag
-
-        # 時間平均力を計算する
-        aveForce = 0.0
-        cnt = len(self.nodes) * self.num_dof_at_node
-        for k in range(len(Fint)):
-            aveForce += np.abs(Fint[k])
-                
-        for k in range(len(Fext)):
-            if not Fext[k] == 0.0:
-                aveForce += np.abs(Fext[k])
-                cnt+= 1
-                
-        aveForce = aveForce / cnt
 
         # 増分変位における相対誤差を計算する
         solution_rate = LA.norm(delta_solution) / LA.norm(solution - solution_first)
         
         # 残差ベクトルにおける相対誤差を計算する
-        ResiForceRate = np.abs(Rc).max() / aveForce
+        residual_rate = LA.norm(Rc) / LA.norm(Fint)
 
         # 増分変位と残差ベクトルが閾値以下であれば、収束とする
-        if solution_rate < self.cn and ResiForceRate < self.rn:
+        if solution_rate < self.cn and residual_rate < self.rn:
             check_flag = True
-            return check_flag
+        
+        return check_flag, solution_rate, residual_rate
 
     #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
