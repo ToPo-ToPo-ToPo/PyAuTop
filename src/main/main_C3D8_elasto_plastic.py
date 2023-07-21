@@ -9,7 +9,7 @@ if parent_dir not in sys.path:
 from src.model.node import Node
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
-from src.method.nonliear_fem import NonlinearFEM
+from method.nonlinear_fem import NonlinearFEM
 from src.model.element.C3D8 import C3D8
 
 # メインの処理

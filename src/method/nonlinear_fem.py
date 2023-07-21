@@ -44,7 +44,7 @@ class NonlinearFEM(FEMBase):
         # 荷重をインクリメント毎に分割する
         Fext_list = []
         for istep in range(self.num_step):
-            Fext_list.append(self.make_force_vector() * (istep + 1) / self.num_step)
+            Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
 
         # 変位ベクトルと残差ベクトルの定義
         solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
@@ -179,7 +179,7 @@ class NonlinearFEM(FEMBase):
         for elem in self.elements:
             
             # 要素内力ベクトルを作成する
-            Fint_e = elem.makeqVector()
+            Fint_e = elem.make_Fint()
             
             # アセンブリング
             for k in range(len(elem.nodes)):
@@ -187,16 +187,6 @@ class NonlinearFEM(FEMBase):
                     Fint[(elem.nodes[k].no - 1) * self.num_dof_at_node + l] += Fint_e[k * elem.num_dof_at_node + l]
         
         return Fint
-    
-    #---------------------------------------------------------------------
-    # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
-    #---------------------------------------------------------------------
-    def make_force_vector(self):
-
-        # 節点に負荷する荷重ベクトルを作成する
-        vecf = self.bound.make_force_vector()
-
-        return vecf
 
     #---------------------------------------------------------------------
     # ニュートンラプソン法の収束判定を行う
@@ -313,7 +303,7 @@ class NonlinearFEM(FEMBase):
         f.write("NodeNo".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + 
                 "Z Force".rjust(columNum) + "\n")
         f.write("-" * columNum * 4 + "\n")
-        vecf = self.make_force_vector()
+        vecf = self.make_Fext()
         for i in range(len(self.nodes)):
             strFlg = False
             for j in range(self.bound.num_dof_at_node):

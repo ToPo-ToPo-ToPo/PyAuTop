@@ -8,13 +8,13 @@ class Boundary:
     # num_node : 節点数
     def __init__(self, num_node):
         # インスタンス変数を定義する
-        self.num_node = num_node                                     # 全節点数
-        self.num_dof_at_node = 3                                           # 節点の自由度
+        self.num_node = num_node                                             # 全節点数
+        self.num_dof_at_node = 3                                             # 節点の自由度
         self.solution = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
-        self.F = np.array(num_node * self.num_dof_at_node * [0.0])   # 荷重ベクトル
+        self.F = np.array(num_node * self.num_dof_at_node * [0.0])           # 荷重ベクトル
 
-        self.matC = np.empty((0, num_node * self.num_dof_at_node))          # 多点拘束用のCマトリクス
-        self.vecd = np.empty(0)                                    # 多点拘束用のdベクトル
+        self.matC = np.empty((0, num_node * self.num_dof_at_node))           # 多点拘束用のCマトリクス
+        self.vecd = np.empty(0)                                              # 多点拘束用のdベクトル
 
     # 単点拘束を追加する
     # nodeNo : 節点番号
@@ -46,7 +46,7 @@ class Boundary:
         self.F[self.num_dof_at_node * (nodeNo - 1) + 2] = fz
 
     # 境界条件から荷重ベクトルを作成する
-    def make_force_vector(self):
+    def make_Ft(self):
         return self.F
     
     # 多点拘束の境界条件を表すCマトリクス、dベクトルを作成する

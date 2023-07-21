@@ -58,6 +58,33 @@ class FEMBase(FEMInterface):
         return K
 
     #---------------------------------------------------------------------
+    # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
+    #---------------------------------------------------------------------
+    def make_Fext(self):
+
+        # 節点に負荷する荷重ベクトルを作成する
+        Ft = self.bound.make_Ft()
+
+        # 等価節点力の荷重ベクトルを作成する
+        Fb = np.zeros(len(self.nodes) * self.num_dof_at_node)
+        
+        # 全要素ループ
+        for elem in self.elements:
+            
+            # 要素物体力ベクトルを作成する
+            Fb_e = elem.make_Fb()
+            
+            # アセンブリング
+            for i in range(len(elem.nodes)):
+                for j in range(self.num_dof_at_node):
+                    Fb[self.num_dof_at_node * (elem.nodes[i].no - 1) + j] += Fb_e[self.num_dof_at_node * i + j]
+
+        # 境界条件、等価節点力の荷重ベクトルを足し合わせる
+        Fext = Ft + Fb
+
+        return Fext
+    
+    #---------------------------------------------------------------------
     # Kマトリクス、荷重ベクトルに境界条件を考慮する
     # Kt            : 接線剛性マトリクス
     # R             : 残差力ベクトル

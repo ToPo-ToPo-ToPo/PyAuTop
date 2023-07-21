@@ -70,9 +70,39 @@ class C3D8:
         return Ke
     
     #---------------------------------------------------------------------
+    # 等価節点力の荷重ベクトルを作成する
+    #---------------------------------------------------------------------
+    def make_Fb(self):
+
+        # 初期化
+        Fb = np.zeros(self.num_node * self.num_dof_at_node)
+
+        # 積分点ループ
+        '''for ip in range(self.ipNum):
+            
+            # ヤコビ行列を計算する
+            matJ = self.makeJmatrix(self.ai[ip], self.bi[ip], self.ci[ip])
+
+            # 物体力による等価節点力を計算する
+            if not self.vecGravity is None:
+                vecb = self.density * self.vecGravity   # 単位体積あたりの物体力のベクトル
+                N1 = 1 - self.ai - self.bi - self.ci
+                N2 = self.ai
+                N3 = self.bi
+                N4 = self.ci
+                
+                matN = np.matrix([[N1, 0.0, 0.0, N2, 0.0, 0.0, N3, 0.0, 0.0, N4, 0.0, 0.0],
+                                  [0.0, N1, 0.0, 0.0, N2, 0.0, 0.0, N3, 0.0, 0.0, N4, 0.0],
+                                  [0.0, 0.0, N1, 0.0, 0.0, N2, 0.0, 0.0, N3, 0.0, 0.0, N4]])
+                
+                Fb += self.w * np.array(matN.T @ vecb).flatten() * LA.det(matJ)'''
+                
+        return Fb
+    
+    #---------------------------------------------------------------------
     # 内力ベクトルqを作成する
     #---------------------------------------------------------------------
-    def makeqVector(self):
+    def make_Fint(self):
 
         # 初期化
         Fint_e = np.zeros(self.num_dof_at_node * self.num_node)

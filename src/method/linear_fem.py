@@ -39,7 +39,7 @@ class LinearFEM(FEMBase):
         # 荷重をインクリメント毎に分割する
         Fext_list = []
         for istep in range(self.num_step):
-            Fext_list.append(self.make_force_vector() * (istep + 1) / self.num_step)
+            Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
 
         # 変位ベクトルと残差ベクトルの定義
         solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
@@ -68,7 +68,7 @@ class LinearFEM(FEMBase):
             lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
 
             # lhs_cの確認
-            if np.isclose(LA.det(lhs_c), 0.0) :
+            if np.isclose(LA.det(lhs_c), 0.0):
                 raise ValueError("有限要素法の計算に失敗しました。")
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
@@ -81,30 +81,6 @@ class LinearFEM(FEMBase):
 
             # 計算中の情報を出力
             print('{:.4e}'.format(LA.norm(Fext)) + '      ' + '{:.4e}'.format(LA.norm(solution)) + '      ')
- 
-    #---------------------------------------------------------------------
-    # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
-    #---------------------------------------------------------------------
-    def make_force_vector(self):
-
-        # 節点に負荷する荷重ベクトルを作成する
-        vecCondiForce = self.bound.make_force_vector()
-
-        # 等価節点力の荷重ベクトルを作成する
-        vecEqNodeForce = np.zeros(len(self.nodes) * self.num_dof_at_node)
-        
-        for elem in self.elements:
-            
-            vecElemEqNodeForce = elem.makeEqNodeForceVector()
-            
-            for i in range(len(elem.nodes)):
-                for j in range(self.num_dof_at_node):
-                    vecEqNodeForce[self.num_dof_at_node * (elem.nodes[i].no - 1) + j] += vecElemEqNodeForce[self.num_dof_at_node * i + j]
-
-        # 境界条件、等価節点力の荷重ベクトルを足し合わせる
-        vecf = vecCondiForce + vecEqNodeForce
-
-        return vecf
 
     #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
@@ -181,7 +157,7 @@ class LinearFEM(FEMBase):
         f.write("***** Nodal Force Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + "Z Force".rjust(columNum) +"\n")
         f.write("-" * columNum * 4 + "\n")
-        vecf = self.make_force_vector()
+        vecf = self.make_Fext()
         for i in range(len(self.nodes)):
             flg = False
             for j in range(self.num_dof_at_node):
