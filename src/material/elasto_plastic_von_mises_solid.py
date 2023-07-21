@@ -121,6 +121,7 @@ class ElastoPlasticVonMisesSolid:
         deltaGamma = 0.0
         if triF > 0.0 :
             normTriDStress = LA.norm(tenTriDStress, "fro")
+            
             # 収束演算を行う
             for i in range(self.itr_max):
 
@@ -252,7 +253,7 @@ class ElastoPlasticVonMisesSolid:
         for i in range(len(self.pStrainLine) - 1):
             if self.pStrainLine[i] <= ePStrain and ePStrain <= self.pStrainLine[i+1]:
                 no = i
-                
+
         if no is None:
             raise ValueError("相当塑性ひずみが定義した範囲を超えています。")
 
