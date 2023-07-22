@@ -8,6 +8,8 @@ if parent_dir not in sys.path:
 
 import numpy as np
 import numpy.linalg as LA
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import csr_matrix
 from src.method.fem_base import FEMBase
 
 #=============================================================================
@@ -101,12 +103,11 @@ class NonlinearFEM(FEMBase):
             # ニュートン法による収束演算を行う
             for iter in range(self.itr_max + 1):
 
-                # Ktcの逆行列が計算できるかチェックする
-                if np.isclose(LA.det(Ktc), 0.0):
-                    raise ValueError("有限要素法の計算に失敗しました。")
+                # 疎行列に変換する
+                Ktc = csr_matrix(Ktc)
 
                 # 変位増分Δuを計算
-                delta_solution = LA.solve(Ktc, Rc)
+                delta_solution = spsolve(Ktc, Rc, use_umfpack=True)
 
                 # 変位ベクトルの更新: u_new = u_old + Δu
                 solution += delta_solution

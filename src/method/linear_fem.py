@@ -6,6 +6,8 @@ if parent_dir not in sys.path:
 
 import numpy as np
 import numpy.linalg as LA
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import csr_matrix
 from src.method.fem_base import FEMBase
 from src.boundary import Boundary
 
@@ -67,12 +69,11 @@ class LinearFEM(FEMBase):
             # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
             lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
 
-            # lhs_cの確認
-            if np.isclose(LA.det(lhs_c), 0.0):
-                raise ValueError("有限要素法の計算に失敗しました。")
+            # 疎行列に変換する
+            lhs_c = csr_matrix(lhs_c)
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
-            solution = LA.solve(lhs_c, rhs_c)
+            solution = spsolve(lhs_c, rhs_c, use_umfpack=True)
             self.solution_list.append(solution.copy())
 
             # 節点反力を計算し、インクリメントの最終的な節点反力を格納する
