@@ -24,43 +24,43 @@ class C3D4(ElementBase):
     def __init__(self, no, nodes, material, vecGravity = None):
 
         # インスタンス変数を定義する
-        self.num_node = 4              # 節点の数
-        self.num_dof_at_node = 3       # 節点の自由度
-        self.no = no                   # 要素番号
+        self.__num_node = 4            # 節点の数
+        self.__num_dof_at_node = 3     # 節点の自由度
+        self.__no = no                 # 要素番号
         self.nodes = nodes             # nodesは反時計回りの順番になっている前提(Node2d型のリスト形式)
         self.material = []             # 材料モデルのリスト
         self.vecGravity = vecGravity   # 重力加速度のベクトル(np.array型)
         
-        self.ipNum = 1                 # 積分点の数
-        self.w = 1.0 / 6.0             # 積分点の重み係数
-        self.ai = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
-        self.bi = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
-        self.ci = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
+        self.__ipNum = 1                 # 積分点の数
+        self.__w = 1.0 / 6.0             # 積分点の重み係数
+        self.__ai = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
+        self.__bi = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
+        self.__ci = 1.0 / 4.0            # 積分点の座標(a,b,c座標系)
 
         # 要素内節点の自由度数を更新する
         for inode in range(len(self.nodes)):
-            self.nodes[inode].num_dof = self.num_dof_at_node
+            self.nodes[inode].num_dof = self.__num_dof_at_node
 
         # 要素内の変位を初期化する
-        self.solution = np.zeros(self.num_node * self.num_dof_at_node)
+        self.solution = np.zeros(self.__num_node * self.__num_dof_at_node)
         
         # 要素内の自由度番号のリストを作成する
-        self.dof_list = self.make_dof_list(nodes, self.num_node, self.num_dof_at_node)
+        self.dof_list = self.make_dof_list(nodes, self.__num_node, self.__num_dof_at_node)
 
         # 材料モデルを初期化する
-        for ip in range(self.ipNum):
+        for ip in range(self.__ipNum):
             self.material.append(copy.deepcopy(material))
-
+    
     #---------------------------------------------------------------------
     # 要素剛性マトリクスKeを作成する
     #---------------------------------------------------------------------
     def make_K(self):
 
         # 初期化
-        Ke = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
+        Ke = np.zeros([self.__num_dof_at_node * self.__num_node, self.__num_dof_at_node * self.__num_node])
 
         # 積分点ループ
-        for ip in range(self.ipNum):
+        for ip in range(self.__ipNum):
             
             # ヤコビ行列を計算する
             matJ = self.make_J_matrix()
@@ -69,7 +69,7 @@ class C3D4(ElementBase):
             matB = self.make_B_matrix()
 
             # Ketマトリクスをガウス積分で計算する
-            Ke += self.w * matB.T @ self.material[ip].matD @ matB * LA.det(matJ)
+            Ke += self.__w * matB.T @ self.material[ip].matD @ matB * LA.det(matJ)
 
         return Ke
     
@@ -79,10 +79,10 @@ class C3D4(ElementBase):
     def make_Fint(self):
 
         # 初期化
-        Fint_e = np.zeros(self.num_dof_at_node * self.num_node)
+        Fint_e = np.zeros(self.__num_dof_at_node * self.__num_node)
 
         # 積分点ループ
-        for ip in range(self.ipNum):
+        for ip in range(self.__ipNum):
             
             # ヤコビ行列を計算する
             matJ = self.make_J_matrix()
@@ -104,24 +104,24 @@ class C3D4(ElementBase):
         matJ = self.make_J_matrix()
 
         # 初期化
-        Fb = np.zeros(self.num_node * self.num_dof_at_node)
+        Fb = np.zeros(self.__num_node * self.__num_dof_at_node)
 
         # 物体力による等価節点力を計算する
         if not self.vecGravity is None:
 
             # 積分点ループ
-            for ip in range(self.ipNum):
+            for ip in range(self.__ipNum):
                 # 単位体積あたりの物体力のベクトル
                 vecb = self.material[ip].density * self.vecGravity   
-                N1 = 1 - self.ai - self.bi - self.ci
-                N2 = self.ai
-                N3 = self.bi
-                N4 = self.ci
+                N1 = 1 - self.__ai - self.__bi - self.__ci
+                N2 = self.__ai
+                N3 = self.__bi
+                N4 = self.__ci
                 matN = np.matrix([[N1, 0.0, 0.0, N2, 0.0, 0.0, N3, 0.0, 0.0, N4, 0.0, 0.0],
                                   [0.0, N1, 0.0, 0.0, N2, 0.0, 0.0, N3, 0.0, 0.0, N4, 0.0],
                                   [0.0, 0.0, N1, 0.0, 0.0, N2, 0.0, 0.0, N3, 0.0, 0.0, N4]])
                 
-                Fb += self.w * np.array(matN.T @ vecb).flatten() * LA.det(matJ)
+                Fb += self.__w * np.array(matN.T @ vecb).flatten() * LA.det(matJ)
 
         return Fb
     
@@ -213,7 +213,7 @@ class C3D4(ElementBase):
         self.solution = elem_solution
 
         # 積分点ループ
-        for ip in range(self.ipNum):
+        for ip in range(self.__ipNum):
             
             # Bマトリックスを作成
             matB = self.make_B_matrix()
@@ -227,5 +227,5 @@ class C3D4(ElementBase):
     def update_constitutive_law(self):
 
         # 積分点ループ
-        for ip in range(self.ipNum):
+        for ip in range(self.__ipNum):
             self.material[ip].update()
