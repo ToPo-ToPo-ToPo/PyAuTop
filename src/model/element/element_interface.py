@@ -1,0 +1,53 @@
+
+from os.path import dirname, abspath
+import sys
+parent_dir = dirname(dirname(dirname(abspath(__file__))))
+if parent_dir not in sys.path: 
+    sys.path.append(parent_dir)
+
+import abc
+import numpy as np
+
+#=============================================================================
+# 要素クラスのインターフェースを定義する
+# 具体的な実装は継承先にて行う
+#=============================================================================
+class ElementInterface(metaclass=abc.ABCMeta):
+    
+    #---------------------------------------------------------------------
+    # 要素接線剛性マトリクスKeを作成する
+    #---------------------------------------------------------------------
+    @abc.abstractmethod
+    def make_K(self):
+        raise NotImplementedError()
+    
+    #---------------------------------------------------------------------
+    # 内力ベクトルFintを作成する
+    #---------------------------------------------------------------------
+    @abc.abstractmethod
+    def make_Fint(self):
+        raise NotImplementedError()
+    
+    #---------------------------------------------------------------------
+    # 等価節点力の荷重ベクトルを作成する
+    #---------------------------------------------------------------------
+    @abc.abstractmethod
+    def make_Fb(self):
+        raise NotImplementedError()
+    
+    #---------------------------------------------------------------------
+    # 構成則の計算を行う
+    # elem_solution : 要素節点の変位ベクトル(np.array型)
+    #---------------------------------------------------------------------
+    @abc.abstractmethod
+    def compute_constitutive_law(self, elem_solution):
+        raise NotImplementedError()
+    
+    #---------------------------------------------------------------------
+    # 構成則の変数を更新する
+    #---------------------------------------------------------------------
+    @abc.abstractmethod
+    def update_constitutive_law(self):
+        raise NotImplementedError()
+    
+    

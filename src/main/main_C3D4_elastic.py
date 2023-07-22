@@ -620,7 +620,7 @@ def main():
            elem381,elem382,elem383,elem384]
 
     # 境界条件を設定する
-    bound = Boundary(len(nodes))
+    bound = Boundary(nodes)
     bound.add_SPC(1, 0.0, 0.0, 0.0)
     bound.add_SPC(2, 0.0, 0.0, 0.0)
     bound.add_SPC(3, 0.0, 0.0, 0.0)

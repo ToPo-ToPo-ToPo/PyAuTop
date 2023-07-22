@@ -10,7 +10,7 @@ from src.model.node import Node
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
 from method.nonlinear_fem import NonlinearFEM
-from src.model.element.C3D8 import C3D8
+from model.element.C3D8_Bbar import C3D8Bbar
 
 # メインの処理
 def main():
@@ -51,13 +51,13 @@ def main():
     mat.add_stress_plastic_strain_line(700000, 1.0)
 
     # 要素リストを定義する
-    elem1 = C3D8(1, nodes1, mat)
-    elem2 = C3D8(2, nodes2, mat)
-    elem3 = C3D8(3, nodes3, mat)
+    elem1 = C3D8Bbar(1, nodes1, mat)
+    elem2 = C3D8Bbar(2, nodes2, mat)
+    elem3 = C3D8Bbar(3, nodes3, mat)
     elems = [elem1, elem2, elem3]
 
     # 境界条件を定義する
-    bound = Boundary(len(nodes))
+    bound = Boundary(nodes)
     bound.add_SPC(1, 0.0, 0.0, 0.0)
     bound.add_SPC(5, 0.0, 0.0, 0.0)
     bound.add_SPC(9, 0.0, 0.0, 0.0)

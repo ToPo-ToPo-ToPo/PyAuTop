@@ -24,7 +24,6 @@ class NonlinearFEM(FEMBase):
     def __init__(self, nodes, elements, bound, num_step):
 
         # インスタンス変数を定義する
-        self.num_dof_at_node = 3           # 節点の自由度
         self.nodes = nodes                 # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
         self.elements = elements           # 要素は種類ごとにソートされている前提(リスト)
         self.bound = bound                 # 境界条件(d2Boundary型)
@@ -35,6 +34,9 @@ class NonlinearFEM(FEMBase):
         self.rn = 1.0e-07                  # ニュートン法の残差力の収束判定のパラメータ
         self.cn = 1.0e-06                  # ニュートン法の変位の収束判定のパラメータ
 
+        # 総自由度数を計算する
+        self.compute_num_total_equation()
+        
     #---------------------------------------------------------------------
     # 陰解法で解析を行う
     #---------------------------------------------------------------------
@@ -65,8 +67,8 @@ class NonlinearFEM(FEMBase):
 
 
         # 変位ベクトルと残差ベクトルの定義
-        solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
-        R = np.zeros(len(self.nodes) * self.num_dof_at_node)          # 残差力ベクトル
+        solution = np.zeros(self.num_total_equation)   # 全節点の変位ベクトル
+        R = np.zeros(self.num_total_equation)          # 残差力ベクトル
         
         # 増分解析ループ
         for istep in range(self.num_step):
@@ -155,59 +157,6 @@ class NonlinearFEM(FEMBase):
             self.Freact_list.append(Rreact)      
 
     #---------------------------------------------------------------------
-    # 全ての要素内の変数を更新する
-    # solution : 全節点の変位ベクトル(np.array型)
-    # incNo   : インクリメントの番号
-    #---------------------------------------------------------------------
-    def update_element_data(self, solution):
-
-        # 全要素ループ
-        for elem in self.elements:
-            
-            # 要素状態場の初期化
-            elem_solution = np.zeros(len(elem.nodes) * self.num_dof_at_node)
-            
-            # 要素状態場を更新する
-            for i in range(len(elem.nodes)):
-                for j in range(elem.num_dof_at_node):
-                    elem_solution[i * elem.num_dof_at_node + j] = solution[(elem.nodes[i].no - 1) * self.num_dof_at_node + j]
-
-            # 構成則の内部の変数を更新する
-            elem.compute_constitutive_law(elem_solution) 
-    
-    #---------------------------------------------------------------------
-    # 全ての要素内の変数を更新する
-    #---------------------------------------------------------------------
-    def update_constitutive_low(self):
-
-        # 全要素ループ
-        for elem in self.elements:
-
-            # 構成則の内部の変数を更新する
-            elem.update_constitutive_law() 
-
-    #---------------------------------------------------------------------
-    # 内力ベクトルFintを作成する
-    #---------------------------------------------------------------------
-    def make_Fint(self):
-
-        # 初期化
-        Fint = np.zeros(len(self.nodes) * self.num_dof_at_node)
-        
-        # 全要素ループ
-        for elem in self.elements:
-            
-            # 要素内力ベクトルを作成する
-            Fint_e = elem.make_Fint()
-            
-            # アセンブリング
-            for k in range(len(elem.nodes)):
-                for l in range(elem.num_dof_at_node):
-                    Fint[(elem.nodes[k].no - 1) * self.num_dof_at_node + l] += Fint_e[k * elem.num_dof_at_node + l]
-        
-        return Fint
-
-    #---------------------------------------------------------------------
     # ニュートンラプソン法の収束判定を行う
     #---------------------------------------------------------------------
     def check_convergence(self, Fint, Rc, solution, solution_first, delta_solution):
@@ -293,7 +242,7 @@ class NonlinearFEM(FEMBase):
         f.write("\n")
 
         # 単点拘束情報を出力する
-        f.write("***** SPC Constraint Data ******\n")
+        '''f.write("***** SPC Constraint Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Displacement".rjust(columNum) + "Y Displacement".rjust(columNum) + 
                 "Z Displacement".rjust(columNum) + "\n")
         f.write("-" * columNum * 4 + "\n")
@@ -315,10 +264,10 @@ class NonlinearFEM(FEMBase):
                 if not vecBoundDisp[i * self.bound.num_dof_at_node + 2] is None:
                     strZDisp = str(format(vecBoundDisp[i * self.bound.num_dof_at_node + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXDisp + strYDisp + strZDisp + "\n")
-        f.write("\n")
+        f.write("\n")'''
 
         # 荷重条件を出力する(等価節点力も含む)
-        f.write("***** Nodal Force Data ******\n")
+        """f.write("***** Nodal Force Data ******\n")
         f.write("NodeNo".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + 
                 "Z Force".rjust(columNum) + "\n")
         f.write("-" * columNum * 4 + "\n")
@@ -334,7 +283,7 @@ class NonlinearFEM(FEMBase):
                 strYForce = str(format(vecf[i * self.bound.num_dof_at_node + 1], floatDigits).rjust(columNum))
                 strZForce = str(format(vecf[i * self.bound.num_dof_at_node + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXForce + strYForce + strZForce + "\n")
-        f.write("\n")
+        f.write("\n")"""
 
         # 結果データのタイトルを書きこむ
         f.write("**********************************\n")
@@ -354,11 +303,11 @@ class NonlinearFEM(FEMBase):
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 solution = self.solution_list[i]
-                mag = np.linalg.norm(np.array((solution[self.num_dof_at_node * j], solution[self.num_dof_at_node * j + 1], solution[self.num_dof_at_node * j + 2])))
+                mag = np.linalg.norm(np.array((solution[self.nodes[j].num_dof * j], solution[self.nodes[j].num_dof * j + 1], solution[self.nodes[j].num_dof * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXDisp = str(format(solution[self.num_dof_at_node * j], floatDigits).rjust(columNum))
-                strYDisp = str(format(solution[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(solution[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                strXDisp = str(format(solution[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
+                strYDisp = str(format(solution[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(solution[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
             f.write("\n")
 
@@ -434,11 +383,11 @@ class NonlinearFEM(FEMBase):
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 vecRF = self.Freact_list[i]
-                mag = np.linalg.norm(np.array((vecRF[self.num_dof_at_node * j], vecRF[self.num_dof_at_node * j + 1], vecRF[self.num_dof_at_node * j + 2])))
+                mag = np.linalg.norm(np.array((vecRF[self.nodes[j].num_dof * j], vecRF[self.nodes[j].num_dof * j + 1], vecRF[self.nodes[j].num_dof * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXForce = str(format(vecRF[self.num_dof_at_node * j], floatDigits).rjust(columNum))
-                strYForce = str(format(vecRF[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecRF[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                strXForce = str(format(vecRF[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
+                strYForce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecRF[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
             f.write("\n")
 

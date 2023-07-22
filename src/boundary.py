@@ -6,16 +6,21 @@ import numpy as np
 class Boundary:
     # コンストラクタ
     # num_node : 節点数
-    def __init__(self, num_node):
+    def __init__(self, nodes):
         # インスタンス変数を定義する
-        self.num_node = num_node                                             # 全節点数
-        self.num_dof_at_node = 3                                             # 節点の自由度
+        self.nodes = nodes
+        self.num_node = len(nodes)                                   # 全節点数
 
-        self.solution = np.array(num_node * self.num_dof_at_node * [None])   # 単点拘束の強制変位
-        self.F = np.array(num_node * self.num_dof_at_node * [0.0])           # 荷重ベクトル
+        # 総自由度数を計算する
+        self.num_total_equation = 0
+        for i in range(len(self.nodes)):
+            self.num_total_equation += self.nodes[i].num_dof
 
-        self.matC = np.empty((0, num_node * self.num_dof_at_node))           # 多点拘束用のCマトリクス
-        self.vecd = np.empty(0)                                              # 多点拘束用のdベクトル
+        self.solution = np.array(self.num_total_equation * [None])   # 単点拘束の強制変位
+        self.F = np.array(self.num_total_equation * [0.0])           # 荷重ベクトル
+
+        self.matC = np.empty((0, self.num_total_equation))           # 多点拘束用のCマトリクス
+        self.vecd = np.empty(0)                                      # 多点拘束用のdベクトル
 
     # 単点拘束を追加する
     # nodeNo : 節点番号
@@ -24,9 +29,9 @@ class Boundary:
     # dispZ  : z方向の強制変位
     def add_SPC(self, nodeNo, dispX, dispY, dispZ):
 
-        self.solution[self.num_dof_at_node * (nodeNo - 1) + 0] = dispX
-        self.solution[self.num_dof_at_node * (nodeNo - 1) + 1] = dispY
-        self.solution[self.num_dof_at_node * (nodeNo - 1) + 2] = dispZ
+        self.solution[self.nodes[nodeNo-1].dof(0)] = dispX
+        self.solution[self.nodes[nodeNo-1].dof(1)] = dispY
+        self.solution[self.nodes[nodeNo-1].dof(2)] = dispZ
 
     # 多点拘束を追加する
     # 条件式 : vecC x u = d
@@ -42,9 +47,9 @@ class Boundary:
     # 荷重を追加する
     def add_force(self, nodeNo, fx, fy, fz):
 
-        self.F[self.num_dof_at_node * (nodeNo - 1) + 0] = fx
-        self.F[self.num_dof_at_node * (nodeNo - 1) + 1] = fy
-        self.F[self.num_dof_at_node * (nodeNo - 1) + 2] = fz
+        self.F[self.nodes[nodeNo-1].dof(0)] = fx
+        self.F[self.nodes[nodeNo-1].dof(1)] = fy
+        self.F[self.nodes[nodeNo-1].dof(2)] = fz
 
     # 境界条件から荷重ベクトルを作成する
     def make_Ft(self):

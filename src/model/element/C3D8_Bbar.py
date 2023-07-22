@@ -9,10 +9,11 @@ if parent_dir not in sys.path:
 import copy
 import numpy as np
 import numpy.linalg as LA
+from src.model.element.element_base import ElementBase 
 #=============================================================================
 # 6面体8節点要素のクラス
 #=============================================================================
-class C3D8:
+class C3D8Bbar(ElementBase):
     # コンストラクタ
     # no              : 要素番号
     # nodes           : 要素(Node型のリスト)
@@ -37,8 +38,15 @@ class C3D8:
         self.ci = np.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),   # 積分点の座標(a,b,c座標系, np.array型のリスト)
                             np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0)])
         
+        # 要素内節点の自由度数を更新する
+        for inode in range(len(self.nodes)):
+            self.nodes[inode].num_dof = self.num_dof_at_node
+
         # 要素内の変位を初期化する
-        self.solution = np.zeros(self.num_node * self.num_dof_at_node)   # 要素内の変位
+        self.solution = np.zeros(self.num_node * self.num_dof_at_node)
+        
+        # 要素内の自由度番号のリストを作成する
+        self.dof_list = self.make_dof_list(nodes, self.num_node, self.num_dof_at_node)
 
         # 材料モデルを初期化する
         for ip in range(self.ipNum):
@@ -340,6 +348,4 @@ class C3D8:
 
         # 積分点ループ
         for ip in range(self.ipNum):
-            
-            # 構成則の内部変数の更新
             self.material[ip].update()

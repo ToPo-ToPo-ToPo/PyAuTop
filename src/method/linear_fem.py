@@ -19,15 +19,18 @@ class LinearFEM(FEMBase):
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
     # elements : 要素は種類ごとにソートされている前提(C3D4型のリスト)
     # bound    : 境界条件(d2Boundary型)
+    # num_step : インクリメント数
     def __init__(self, nodes, elements, bound, num_step):
 
         # インスタンス変数を定義する
-        self.num_dof_at_node = 3    # 節点の自由度
         self.nodes = nodes          # 節点のリスト
         self.elements = elements    # 要素のリスト
         self.bound = bound          # 境界条件
 
         self.num_step = num_step    # インクリメント数
+
+        # 総自由度数を計算する
+        self.compute_num_total_equation()
 
     #---------------------------------------------------------------------
     # 解析を行う
@@ -44,7 +47,7 @@ class LinearFEM(FEMBase):
             Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
 
         # 変位ベクトルと残差ベクトルの定義
-        solution = np.zeros(len(self.nodes) * self.num_dof_at_node)   # 全節点の変位ベクトル
+        solution = np.zeros(self.num_total_equation)   # 全節点の変位ベクトル
 
         # 境界条件を考慮しないKマトリクスを作成する
         K = self.make_K()
@@ -143,14 +146,14 @@ class LinearFEM(FEMBase):
         vecd = self.bound.make_disp_vector()
         for i in range(len(self.nodes)):
             flg = False
-            for j in range(self.num_dof_at_node):
-                if not vecd[self.num_dof_at_node * i + j] == None:
+            for j in range(self.nodes[i].num_dof):
+                if not vecd[self.nodes[i].num_dof * i + j] == None:
                     flg = True
             if flg == True:
                 strNo = str(i + 1).rjust(columNum)
-                strXDisp = str(format(vecd[self.num_dof_at_node * i], floatDigits).rjust(columNum))
-                strYDisp = str(format(vecd[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(vecd[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
+                strXDisp = str(format(vecd[self.nodes[i].num_dof * i], floatDigits).rjust(columNum))
+                strYDisp = str(format(vecd[self.nodes[i].num_dof * i + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(vecd[self.nodes[i].num_dof * i + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXDisp + strYDisp + strZDisp + "\n")
         f.write("\n")
 
@@ -161,14 +164,14 @@ class LinearFEM(FEMBase):
         vecf = self.make_Fext()
         for i in range(len(self.nodes)):
             flg = False
-            for j in range(self.num_dof_at_node):
-                if not vecf[self.num_dof_at_node * i + j] == None:
+            for j in range(self.nodes[i].num_dof):
+                if not vecf[self.nodes[i].num_dof * i + j] == None:
                     flg = True
             if flg == True:
                 strNo = str(i + 1).rjust(columNum)
-                strXForce = str(format(vecf[self.num_dof_at_node * i], floatDigits).rjust(columNum))
-                strYForce = str(format(vecf[self.num_dof_at_node * i + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecf[self.num_dof_at_node * i + 2], floatDigits).rjust(columNum))
+                strXForce = str(format(vecf[self.nodes[i].num_dof * i], floatDigits).rjust(columNum))
+                strYForce = str(format(vecf[self.nodes[i].num_dof * i + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecf[self.nodes[i].num_dof * i + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strXForce + strYForce + strZForce + "\n")
         f.write("\n")
 
@@ -190,11 +193,11 @@ class LinearFEM(FEMBase):
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 solution = self.solution_list[i]
-                mag = np.linalg.norm(np.array((solution[self.num_dof_at_node * j], solution[self.num_dof_at_node * j + 1], solution[self.num_dof_at_node * j + 2])))
+                mag = np.linalg.norm(np.array((solution[self.nodes[j].num_dof * j], solution[self.nodes[j].num_dof * j + 1], solution[self.nodes[j].num_dof * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXDisp = str(format(solution[self.num_dof_at_node * j], floatDigits).rjust(columNum))
-                strYDisp = str(format(solution[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(solution[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                strXDisp = str(format(solution[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
+                strYDisp = str(format(solution[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
+                strZDisp = str(format(solution[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
             f.write("\n")
 
@@ -206,11 +209,11 @@ class LinearFEM(FEMBase):
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 vecRF = self.Freact_list[i]
-                mag = np.linalg.norm(np.array((vecRF[self.num_dof_at_node * j], vecRF[self.num_dof_at_node * j + 1], vecRF[self.num_dof_at_node * j + 2])))
+                mag = np.linalg.norm(np.array((vecRF[self.nodes[j].num_dof * j], vecRF[self.nodes[j].num_dof * j + 1], vecRF[self.nodes[j].num_dof * j + 2])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
-                strXForce = str(format(vecRF[self.num_dof_at_node * j], floatDigits).rjust(columNum))
-                strYForce = str(format(vecRF[self.num_dof_at_node * j + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecRF[self.num_dof_at_node * j + 2], floatDigits).rjust(columNum))
+                strXForce = str(format(vecRF[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
+                strYForce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
+                strZForce = str(format(vecRF[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
                 f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
             f.write("\n")
 
