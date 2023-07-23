@@ -9,7 +9,7 @@ if parent_dir not in sys.path:
 import copy
 import numpy as np
 import numpy.linalg as LA
-from src.model.element.element_base import ElementBase 
+from src.physics.element.element_base import ElementBase 
 #=============================================================================
 # 6面体8節点要素のクラス
 #=============================================================================

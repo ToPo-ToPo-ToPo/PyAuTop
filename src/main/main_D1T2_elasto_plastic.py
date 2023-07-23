@@ -5,11 +5,11 @@ parent_dir = dirname(dirname(dirname(abspath(__file__))))
 if parent_dir not in sys.path: 
     sys.path.append(parent_dir)
 
-from src.model.node_1d import Node1d
+from src.physics.node_1d import Node1d
 from src.material.elasto_plastic_von_mises.truss import ElastoPlasticVonMisesTruss
 from src.boundary_1d import Boundary1d
 from src.method.nonlinear_fem_1d import FEM1d
-from src.model.element.D1T2 import D1T2
+from src.physics.element.D1T2 import D1T2
 
 #=============================================================================
 # メインの処理

@@ -6,7 +6,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 import numpy as np
-from src.model.element.element_interface import ElementInterface 
+from src.physics.element.element_interface import ElementInterface 
 #=============================================================================
 # 要素クラスの基本クラスを定義する
 # 共有部分を定義する

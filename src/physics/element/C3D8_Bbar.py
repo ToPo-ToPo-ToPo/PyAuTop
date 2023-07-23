@@ -9,7 +9,7 @@ if parent_dir not in sys.path:
 import copy
 import numpy as np
 import numpy.linalg as LA
-from src.model.element.C3D8 import C3D8
+from src.physics.element.C3D8 import C3D8
 #=============================================================================
 # 6面体8節点要素のクラス
 #=============================================================================

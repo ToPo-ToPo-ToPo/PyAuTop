@@ -6,11 +6,11 @@ parent_dir = dirname(dirname(dirname(abspath(__file__))))
 if parent_dir not in sys.path: 
     sys.path.append(parent_dir)
 
-from src.model.node import Node
+from src.physics.node import Node
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
 from method.nonlinear_fem import NonlinearFEM
-from model.element.C3D8_Bbar import C3D8Bbar
+from physics.element.C3D8_Bbar import C3D8Bbar
 
 # メインの処理
 def main():

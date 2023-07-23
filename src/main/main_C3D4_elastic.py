@@ -5,9 +5,9 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 import numpy as np
-from src.model.node import Node
+from src.physics.node import Node
 from src.material.elastic.solid import ElasticSolid
-from src.model.element.C3D4 import C3D4
+from src.physics.element.C3D4 import C3D4
 from src.boundary import Boundary
 from src.method.linear_fem import LinearFEM
 from src.method.nonlinear_fem import NonlinearFEM

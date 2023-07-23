@@ -1,0 +1,18 @@
+===============================================================================
+Structural_analysis_input_data_for_Auto_Mesh
+===============================================================================
+
+---------------------------------------------------------------------- Geometry
+Mesh: C3D8_Bbar xlength: 1000.0 ylength: 500.0 zlength: 10.0 xdiv: 10 ydiv: 5 zdiv: 1
+
+--------------------------------------------------------------------- Component
+Component: 1 Element_Type: C3D8_Bbar Optimal_Domain: Design_val Range: All 
+
+---------------------------------------------------------------- Material_Model
+Mat: 1 Component: 1 VonMisesSolid Young: 70.0e+03 Poi: 0.3 Mass: 2.7e-09 Plasticity_condition: stress_pstrain_data.dat
+
+----------------------------------------------------------- Dirichlet_Condition
+Analysis: 1 Fixed_Disp flag: 1 1 0 Val: 0.0 0.0 0.0 range: 0.0 <x< 0.0 0.0 <y< 1000.0 -1000.0 <z< 1000.0 Type: Constant
+
+------------------------------------------------------------- Neumman_Condition
+Analysis: 1 Point_Load Val: 0.0 -100.0e+01 0.0 Range: 0.0 <x< 200.0 200.0 <y< 200.0 0.0 <z< 1000.0 Type: Linear
