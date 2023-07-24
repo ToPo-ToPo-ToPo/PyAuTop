@@ -89,63 +89,32 @@ class StaticStructure:
                                 z = delta_z * i
                                 
                                 # 節点の生成
-                                self.nodes.append(Node(int(id+1), float(x), float(y), float(z)))
-                                print(self.nodes[id].x)
-	
+                                self.nodes.append(Node(int(id+1), float(x), float(y), float(z)))	
         
                     # コネクティビティの作成
-                    for i in range(zdiv+1):
-                        for j in range(ydiv+1):
-                            for k in range(xdiv+1):
+                    for i in range(zdiv):
+                        for j in range(ydiv):
+                            for k in range(xdiv):
                                 
-                                # 要素番号
-                                #id = xdiv*ydiv*i + xdiv * j + k
-
                                 # コネクティビティの指定
-                                nodeID1 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k
-                                nodeID2 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1
-                                nodeID3 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1)
-                                nodeID4 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1)
+                                nodeID1 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k]
+                                nodeID2 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1]
+                                nodeID3 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1)]
+                                nodeID4 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1)]
                                                         
-                                nodeID5 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k                + (xdiv+1)*(ydiv+1)
-                                nodeID6 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1            + (xdiv+1)*(ydiv+1)
-                                nodeID7 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1) + (xdiv+1)*(ydiv+1)
-                                nodeID8 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1) + (xdiv+1)*(ydiv+1)
+                                nodeID5 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k                + (xdiv+1)*(ydiv+1)]
+                                nodeID6 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1            + (xdiv+1)*(ydiv+1)]
+                                nodeID7 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1) + (xdiv+1)*(ydiv+1)]
+                                nodeID8 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1) + (xdiv+1)*(ydiv+1)]
 
                                 # 要素の生成
-                                self.connects.append([int(nodeID1)+1, int(nodeID2)+1, int(nodeID3)+1, int(nodeID4)+1, 
-                                                      int(nodeID5)+1, int(nodeID6)+1, int(nodeID7)+1, int(nodeID8)+1])
+                                self.connects.append([nodeID1, nodeID2, nodeID3, nodeID4, 
+                                                      nodeID5, nodeID6, nodeID7, nodeID8])
 
                     #self.nodes, self.connects = auto_mesh(mesh_type, xlength, ylength, zlength, xdiv, ydiv, zdiv)
         
         # inputファイルを閉じる
         input_f.close()
-
-        # 解析メッシュを生成する
-        '''node1 = Node(1, 0.0, 0.0, 0.0)
-        node2 = Node(2, 1.0, 0.0, 0.0)
-        node3 = Node(3, 2.0, 0.0, 0.0)
-        node4 = Node(4, 3.0, 0.0, 0.0)
-        node5 = Node(5, 0.0, 0.0, 1.0)
-        node6 = Node(6, 1.0, 0.0, 1.0)
-        node7 = Node(7, 2.0, 0.0, 1.0)
-        node8 = Node(8, 3.0, 0.0, 1.0)
-        node9 = Node(9, 0.0, 1.0, 0.0)
-        node10 = Node(10, 1.0, 1.0, 0.0)
-        node11 = Node(11, 2.0, 1.0, 0.0)
-        node12 = Node(12, 3.0, 1.0, 0.0)
-        node13 = Node(13, 0.0, 1.0, 1.0)
-        node14 = Node(14, 1.0, 1.0, 1.0)
-        node15 = Node(15, 2.0, 1.0, 1.0)
-        node16 = Node(16, 3.0, 1.0, 1.0)
-        self.nodes = [node1, node2, node3, node4, node5, node6, node7, node8,
-                      node9, node10, node11, node12, node13, node14, node15, node16]
-        
-        # 要素を構成する節点のコネクティビティを設定する
-        nodes1 = [node1, node2, node10, node9, node5, node6, node14, node13]
-        nodes2 = [node2, node3, node11, node10, node6, node7, node15, node14]
-        nodes3 = [node3, node4, node12, node11, node7, node8, node16, node15]
-        self.connects = [nodes1, nodes2, nodes3]'''
 
         return self.nodes, self.connects
 
