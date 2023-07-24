@@ -1,10 +1,3 @@
-#https://qiita.com/Altaka4128/items/41101c96729b68d7c96f
-
-from os.path import dirname, abspath
-import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
-if parent_dir not in sys.path: 
-    sys.path.append(parent_dir)
 
 import copy
 import numpy as np

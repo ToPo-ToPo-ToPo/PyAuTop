@@ -1,17 +1,13 @@
-#https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
-
-from os.path import dirname, abspath
-import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
-if parent_dir not in sys.path: 
-    sys.path.append(parent_dir)
-
+import platform
+pf = platform.system()
+vt = platform.mac_ver()
+if pf == 'Windows' or pf == 'Linux' or vt[2] == 'x86_64':
+    import pypardiso
 import numpy as np
 import numpy.linalg as LA
 from scipy.sparse.linalg import spsolve
 from scipy.sparse import csr_matrix
 from src.method.fem_base import FEMBase
-
 #=============================================================================
 #
 #=============================================================================
@@ -109,7 +105,10 @@ class NonlinearFEM(FEMBase):
                 Ktc = csr_matrix(Ktc)
 
                 # 変位増分Δuを計算
-                delta_solution = spsolve(Ktc, Rc, use_umfpack=True)
+                if pf == 'Windows' or pf == 'Linux' or vt[2] == 'x86_64':
+                    delta_solution = pypardiso.spsolve(Ktc, Rc)
+                else:
+                    delta_solution = spsolve(Ktc, Rc, use_umfpack=True)
 
                 # 変位ベクトルの更新: u_new = u_old + Δu
                 solution += delta_solution

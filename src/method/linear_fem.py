@@ -1,8 +1,3 @@
-from os.path import dirname, abspath
-import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
-if parent_dir not in sys.path: 
-    sys.path.append(parent_dir)
 
 import numpy as np
 import numpy.linalg as LA
@@ -10,7 +5,6 @@ from scipy.sparse.linalg import spsolve
 from scipy.sparse import csr_matrix
 from src.method.fem_base import FEMBase
 from src.boundary import Boundary
-
 #=============================================================================
 # 線形FEM解析のクラス
 #=============================================================================

@@ -1,12 +1,4 @@
-#https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
-from os.path import dirname, abspath
-import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
-if parent_dir not in sys.path: 
-    sys.path.append(parent_dir)
-
-import copy
 import numpy as np
 import numpy.linalg as LA
 from src.physics.element.C3D8 import C3D8

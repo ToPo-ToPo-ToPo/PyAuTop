@@ -1,9 +1,4 @@
 
-from os.path import dirname, abspath
-import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
-if parent_dir not in sys.path: 
-    sys.path.append(parent_dir)
 
 import numpy as np
 from src.physics.element.element_interface import ElementInterface 

@@ -1,9 +1,5 @@
 
-from os.path import dirname, abspath
-import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
-if parent_dir not in sys.path: 
-    sys.path.append(parent_dir)
+
 
 import abc
 import numpy as np

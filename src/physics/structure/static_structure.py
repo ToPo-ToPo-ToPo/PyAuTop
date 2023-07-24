@@ -8,7 +8,7 @@ from src.physics.node import Node
 from src.material.elastic.solid import ElasticSolid
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
-from physics.element.C3D8_Bbar import C3D8Bbar
+from src.physics.element.C3D8_Bbar import C3D8Bbar
 #=============================================================================
 #
 #=============================================================================
