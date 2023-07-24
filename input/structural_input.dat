@@ -9,12 +9,12 @@ Mesh: C3D8_Bbar xlength: 1000.0 ylength: 500.0 zlength: 10.0 xdiv: 10 ydiv: 5 zd
 Component: 1 Element_Type: C3D8_Bbar Optimal_Domain: Design_val Range: All
 -
 ---------------------------------------------------------------|Material_Model|
-Mat: Component: 1 VonMisesSolid Young: 210.0e+03 Poi: 0.3 Mass: 7850.0 Plasticity_condition: stress_pstrain_data.dat
+//Mat: Component: 1 VonMisesSolid Young: 210.0e+03 Poi: 0.3 Mass: 7850.0 Plasticity_condition: stress_pstrain_data.dat
+Mat: Component: 1 ElasticSolid Young: 210.0e+03 Poi: 0.3 Mass: 7850.0 
 -
 ----------------------------------------------------------|Dirichlet_Condition|
-Analysis: 1 Fixed_Disp flag: 1 1 1 Val: 0.0 0.0 0.0 range: 0.0 <x< 0.0 0.0 <y< 1000.0 -1000.0 <z< 1000.0 Type: Constant
+Analysis: 1 Fixed_Disp flag: 1 1 1 Val: 0.0 0.0 0.0 Range: 0.0 <x< 0.0 0.0 <y< 1000.0 0.0 <z< 1000.0 Type: Constant
 -
 ------------------------------------------------------------|Neumman_Condition|
-Analysis: 1 Point_Load Val: 0.0 -100.0e+01 0.0 Range: 0.0 <x< 200.0 200.0 <y< 200.0 0.0 <z< 1000.0 Type: Linear
+Analysis: 1 Point_Load Val: 0.0 0.0 -10000.0 Range: 3.0 <x< 3.0 0.0 <y< 1.0 0.0 <z< 1.0 Type: Linear
 -
---------------------------------------------------------------------------|End|

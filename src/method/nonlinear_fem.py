@@ -76,7 +76,7 @@ class NonlinearFEM(FEMBase):
             # 計算中の情報を出力
             print('')
             print('============================================================')
-            print(' Incremental step' + str(istep+1))
+            print(' Incremental step: ' + str(istep+1))
             print('')
             print('------------------------------------------------------------')
             print(' Iter     ||R0||         ||R/R0||       ||δu/Δu||           ')

@@ -55,7 +55,7 @@ class StaticStructure:
                     str.rstrip('\n')
                     
                     # 空白行でループを脱出する
-                    if str == '':
+                    if str == '-':
                         break
 
                     # タブで文字列を分解する
@@ -141,7 +141,7 @@ class StaticStructure:
                     str = str.rstrip('\n')
                     
                     # 空白行でループを脱出する
-                    if str == '':
+                    if str == '-':
                         break
 
                     # タブで文字列を分解する
@@ -192,7 +192,7 @@ class StaticStructure:
                     str = str.rstrip('\n')
                     
                     # 空白行でループを脱出する
-                    if str == '':
+                    if str == '-':
                         break
 
                     # タブで文字列を分解する
@@ -206,7 +206,7 @@ class StaticStructure:
                     if str_list[3] == 'ElasticSolid':
                         id = str_list[2]
                         mat = ElasticSolid(float(str_list[5]), float(str_list[7]), float(str_list[9]))
-                        material_list.append(id, mat)
+                        material_list.append([id, mat])
                     
                     elif str_list[3] == 'VonMisesSolid':
                         id = str_list[2]
@@ -266,9 +266,6 @@ class StaticStructure:
         
         # 解析条件のinputファイルを開く
         input_f = open(parent_dir + self.input_file_path, 'r')
-        
-        # 初期化
-        material_list = []
 
         # ファイルの読み込みを行う
         while True:
@@ -281,8 +278,8 @@ class StaticStructure:
             if str == '':
                 break
 
-            # 材料物性を取得し、要素を作成する
-            if str == '---------------------------------------------------------------|Material_Model|':
+            # 必要な文字列を取得し、要素を作成する
+            if str == '----------------------------------------------------------|Dirichlet_Condition|':
                 
                 # コメントアウトされていない文字列を探索する
                 while True:
@@ -291,7 +288,7 @@ class StaticStructure:
                     str = str.rstrip('\n')
                     
                     # 空白行でループを脱出する
-                    if str == '':
+                    if str == '-':
                         break
 
                     # タブで文字列を分解する
@@ -300,13 +297,14 @@ class StaticStructure:
                     # コメントアウトされていないか確認する
                     if str_list[0] != 'Analysis:':
                         continue
-
-                    xmin = float(str_list[12])
-                    xmax = float(str_list[14])
-                    ymin = float(str_list[15])
-                    ymax = float(str_list[17])
-                    zmin = float(str_list[18])
-                    zmax = float(str_list[20])
+                    
+                    xmin = float(str_list[12]) - 1e-05
+                    xmax = float(str_list[14]) + 1e-05
+                    ymin = float(str_list[15]) - 1e-05
+                    ymax = float(str_list[17]) + 1e-05
+                    zmin = float(str_list[18]) - 1e-05
+                    zmax = float(str_list[20]) + 1e-05
+                    
 
                     for node in nodes:
                         if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
@@ -315,22 +313,79 @@ class StaticStructure:
                             flag_y = str_list[5]
                             flag_z = str_list[6]
                             
-                            if flag_x == 1:
+                            if flag_x == '1':
                                 val_x = str_list[8]
                             else:
                                 val_x = None
 
-                            if flag_y == 1:
+                            if flag_y == '1':
                                 val_y = str_list[9]
                             else:
                                 val_y = None
 
-                            if flag_z == 1:
+                            if flag_z == '1':
                                 val_z = str_list[10]
                             else:
                                 val_z = None
 
-                            self.bound.add_SPC(node.no, val_x, val_y, val_z)
+                            self.bound.add_SPC(node.no, float(val_x), float(val_y), float(val_z))
+        
+        # inputファイルを閉じる
+        input_f.close()
+        
+    #---------------------------------------------------------------------
+    # 拘束条件を作成する
+    #---------------------------------------------------------------------
+    def create_neumman_condition(self, nodes):
+        
+        # 解析条件のinputファイルを開く
+        input_f = open(parent_dir + self.input_file_path, 'r')
+
+        # ファイルの読み込みを行う
+        while True:
+
+            # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+            str = input_f.readline()
+            str = str.rstrip('\n')
+
+            # 空白かどうかをチェックし、該当すれば読み取りを終了する
+            if str == '':
+                break
+
+            # 必要な文字列を取得し、要素を作成する
+            if str == '------------------------------------------------------------|Neumman_Condition|':
+                
+                # コメントアウトされていない文字列を探索する
+                while True:
+                    # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+                    str = input_f.readline()
+                    str = str.rstrip('\n')
+                    
+                    # 空白行でループを脱出する
+                    if str == '-':
+                        break
+
+                    # タブで文字列を分解する
+                    str_list = str.split(' ')
+
+                    # コメントアウトされていないか確認する
+                    if str_list[0] != 'Analysis:':
+                        continue
+                    
+                    xmin = float(str_list[8]) - 1e-05
+                    xmax = float(str_list[10]) + 1e-05
+                    ymin = float(str_list[11]) - 1e-05
+                    ymax = float(str_list[13]) + 1e-05
+                    zmin = float(str_list[14]) - 1e-05
+                    zmax = float(str_list[16]) + 1e-05
+                    
+                    for node in nodes:
+                        if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
+                            val_x = str_list[4]
+                            val_y = str_list[5]
+                            val_z = str_list[6]
+
+                            self.bound.add_force(node.no, float(val_x), float(val_y), float(val_z))
         
         # inputファイルを閉じる
         input_f.close()
@@ -355,15 +410,9 @@ class StaticStructure:
         # 拘束条件を設定する
         self.bound = Boundary(self.nodes)
         self.create_dirichilet_condition(self.nodes)
-        '''self.bound.add_SPC(1, 0.0, 0.0, 0.0)
-        self.bound.add_SPC(5, 0.0, 0.0, 0.0)
-        self.bound.add_SPC(9, 0.0, 0.0, 0.0)
-        self.bound.add_SPC(13, 0.0, 0.0, 0.0)'''
         
         # 荷重条件を設定する
-        self.bound.add_force(4, 0.0, 0.0, -10000.0)
-        self.bound.add_force(8, 0.0, 0.0, -10000.0)
-        self.bound.add_force(12, 0.0, 0.0, -10000.0)
-        self.bound.add_force(16, 0.0, 0.0, -10000.0)
+        self.create_neumman_condition(self.nodes)
 
+        # 結果を戻す
         return self.nodes, self.elems, self.bound
