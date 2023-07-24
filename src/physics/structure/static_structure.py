@@ -70,9 +70,51 @@ class StaticStructure:
                     xlength = float(str_list[3])
                     ylength = float(str_list[5])
                     zlength = float(str_list[7])
-                    xdiv = float(str_list[9])
-                    ydiv = float(str_list[11])
-                    zdiv = float(str_list[13])
+                    xdiv = int(str_list[9])
+                    ydiv = int(str_list[11])
+                    zdiv = int(str_list[13])
+                    
+                    delta_x = float(xlength) / float(xdiv)
+                    delta_y = float(ylength) / float(ydiv)
+                    delta_z = float(zlength) / float(zdiv)
+                    
+                    # ボクセルメッシュを作成する
+                    # 節点座標の作成
+                    for i in range(zdiv+1):
+                        for j in range(ydiv+1):
+                            for k in range(xdiv+1):
+                                id = k + j*(1+xdiv) + i*(1+xdiv)*(1+ydiv)
+                                x = delta_x * k
+                                y = delta_y * j
+                                z = delta_z * i
+                                
+                                # 節点の生成
+                                self.nodes.append(Node(int(id+1), float(x), float(y), float(z)))
+                                print(self.nodes[id].x)
+	
+        
+                    # コネクティビティの作成
+                    for i in range(zdiv+1):
+                        for j in range(ydiv+1):
+                            for k in range(xdiv+1):
+                                
+                                # 要素番号
+                                #id = xdiv*ydiv*i + xdiv * j + k
+
+                                # コネクティビティの指定
+                                nodeID1 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k
+                                nodeID2 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1
+                                nodeID3 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1)
+                                nodeID4 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1)
+                                                        
+                                nodeID5 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k                + (xdiv+1)*(ydiv+1)
+                                nodeID6 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1            + (xdiv+1)*(ydiv+1)
+                                nodeID7 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1) + (xdiv+1)*(ydiv+1)
+                                nodeID8 = (xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1) + (xdiv+1)*(ydiv+1)
+
+                                # 要素の生成
+                                self.connects.append([int(nodeID1)+1, int(nodeID2)+1, int(nodeID3)+1, int(nodeID4)+1, 
+                                                      int(nodeID5)+1, int(nodeID6)+1, int(nodeID7)+1, int(nodeID8)+1])
 
                     #self.nodes, self.connects = auto_mesh(mesh_type, xlength, ylength, zlength, xdiv, ydiv, zdiv)
         
@@ -80,7 +122,7 @@ class StaticStructure:
         input_f.close()
 
         # 解析メッシュを生成する
-        node1 = Node(1, 0.0, 0.0, 0.0)
+        '''node1 = Node(1, 0.0, 0.0, 0.0)
         node2 = Node(2, 1.0, 0.0, 0.0)
         node3 = Node(3, 2.0, 0.0, 0.0)
         node4 = Node(4, 3.0, 0.0, 0.0)
@@ -103,7 +145,7 @@ class StaticStructure:
         nodes1 = [node1, node2, node10, node9, node5, node6, node14, node13]
         nodes2 = [node2, node3, node11, node10, node6, node7, node15, node14]
         nodes3 = [node3, node4, node12, node11, node7, node8, node16, node15]
-        self.connects = [nodes1, nodes2, nodes3]
+        self.connects = [nodes1, nodes2, nodes3]'''
 
         return self.nodes, self.connects
 
