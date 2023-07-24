@@ -67,55 +67,62 @@ class StaticStructure:
                     
                     # コメントアウトされていない場合
                     mesh_type = str_list[1]
-                    xlength = float(str_list[3])
-                    ylength = float(str_list[5])
-                    zlength = float(str_list[7])
-                    xdiv = int(str_list[9])
-                    ydiv = int(str_list[11])
-                    zdiv = int(str_list[13])
+
+                    # 要素タイプの判定とメッシュ作成
+                    if mesh_type == 'C3D8' or mesh_type == 'C3D8_Bbar':
+                        xlength = float(str_list[3])
+                        ylength = float(str_list[5])
+                        zlength = float(str_list[7])
+                        xdiv = int(str_list[9])
+                        ydiv = int(str_list[11])
+                        zdiv = int(str_list[13])
                     
-                    delta_x = float(xlength) / float(xdiv)
-                    delta_y = float(ylength) / float(ydiv)
-                    delta_z = float(zlength) / float(zdiv)
+                        delta_x = float(xlength) / float(xdiv)
+                        delta_y = float(ylength) / float(ydiv)
+                        delta_z = float(zlength) / float(zdiv)
                     
-                    # ボクセルメッシュを作成する
-                    # 節点座標の作成
-                    for i in range(zdiv+1):
-                        for j in range(ydiv+1):
-                            for k in range(xdiv+1):
-                                id = k + j*(1+xdiv) + i*(1+xdiv)*(1+ydiv)
-                                x = delta_x * k
-                                y = delta_y * j
-                                z = delta_z * i
+                        # ボクセルメッシュを作成する
+                        # 節点座標の作成
+                        for i in range(zdiv+1):
+                            for j in range(ydiv+1):
+                                for k in range(xdiv+1):
+                                    id = k + j*(1+xdiv) + i*(1+xdiv)*(1+ydiv)
+                                    x = delta_x * k
+                                    y = delta_y * j
+                                    z = delta_z * i
                                 
-                                # 節点の生成
-                                self.nodes.append(Node(int(id+1), float(x), float(y), float(z)))	
+                                    # 節点の生成
+                                    self.nodes.append(Node(int(id+1), float(x), float(y), float(z)))	
         
-                    # コネクティビティの作成
-                    for i in range(zdiv):
-                        for j in range(ydiv):
-                            for k in range(xdiv):
+                        # コネクティビティの作成
+                        for i in range(zdiv):
+                            for j in range(ydiv):
+                                for k in range(xdiv):
                                 
-                                # コネクティビティの指定
-                                nodeID1 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k]
-                                nodeID2 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1]
-                                nodeID3 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1)]
-                                nodeID4 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1)]
+                                    # コネクティビティの指定
+                                    nodeID1 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k]
+                                    nodeID2 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1]
+                                    nodeID3 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1)]
+                                    nodeID4 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1)]
                                                         
-                                nodeID5 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k                + (xdiv+1)*(ydiv+1)]
-                                nodeID6 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1            + (xdiv+1)*(ydiv+1)]
-                                nodeID7 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1) + (xdiv+1)*(ydiv+1)]
-                                nodeID8 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1) + (xdiv+1)*(ydiv+1)]
+                                    nodeID5 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k                + (xdiv+1)*(ydiv+1)]
+                                    nodeID6 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1            + (xdiv+1)*(ydiv+1)]
+                                    nodeID7 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k + 1 + (xdiv+1) + (xdiv+1)*(ydiv+1)]
+                                    nodeID8 = self.nodes[(xdiv+1)*(ydiv+1)*i + (xdiv+1) * j + k     + (xdiv+1) + (xdiv+1)*(ydiv+1)]
 
-                                # 要素の生成
-                                self.connects.append([nodeID1, nodeID2, nodeID3, nodeID4, 
-                                                      nodeID5, nodeID6, nodeID7, nodeID8])
+                                    # 要素の生成
+                                    self.connects.append([nodeID1, nodeID2, nodeID3, nodeID4, 
+                                                          nodeID5, nodeID6, nodeID7, nodeID8])
 
-                    #self.nodes, self.connects = auto_mesh(mesh_type, xlength, ylength, zlength, xdiv, ydiv, zdiv)
+                        #self.nodes, self.connects = auto_mesh(mesh_type, xlength, ylength, zlength, xdiv, ydiv, zdiv)
+                    else:
+                        print('mesh type: ' + mesh_type + 'は実装されていません。')
+                        exit()
         
         # inputファイルを閉じる
         input_f.close()
 
+        # 作成したデータを戻す
         return self.nodes, self.connects
 
     #---------------------------------------------------------------------
@@ -316,10 +323,11 @@ class StaticStructure:
                     zmin = float(str_list[18]) - 1e-05
                     zmax = float(str_list[20]) + 1e-05
                     
-
+                    # 該当する節点を探索する 
                     for node in nodes:
                         if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
                             
+                            # フラグのチェックを行う
                             flag_x = str_list[4]
                             flag_y = str_list[5]
                             flag_z = str_list[6]
@@ -383,13 +391,14 @@ class StaticStructure:
                     if str_list[0] != 'Analysis:':
                         continue
                     
-                    xmin = float(str_list[8]) - 1e-05
+                    xmin = float(str_list[8])  - 1e-05
                     xmax = float(str_list[10]) + 1e-05
                     ymin = float(str_list[11]) - 1e-05
                     ymax = float(str_list[13]) + 1e-05
                     zmin = float(str_list[14]) - 1e-05
                     zmax = float(str_list[16]) + 1e-05
                     
+                    # 該当する節点を探索する
                     for node in nodes:
                         if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
                             val_x = str_list[4]
