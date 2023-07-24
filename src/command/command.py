@@ -21,14 +21,14 @@ class Command:
         
         # 解析条件に関するインプットデータを読み込む
         # ファイル:command.datを開く
-        command_f = open(filepath + ".dat", 'r')
+        command_f = open(filepath + ".dat", 'r', encoding='utf_8')
     
         # ファイルの読み込みを行う
         while True:
             
             # 文字列を1行読み込み、末尾の改行'\n'を取り除く
             str = command_f.readline()
-            str.rstrip('\n')
+            str = str.rstrip('\n')
 
             # 空白かどうかをチェックし、空白であれば読み取りを終了する
             if str == '':
