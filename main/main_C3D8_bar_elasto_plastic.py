@@ -2,7 +2,7 @@
 
 from os.path import dirname, abspath
 import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
+parent_dir = dirname(dirname(abspath(__file__)))
 if parent_dir not in sys.path: 
     sys.path.append(parent_dir)
 
@@ -72,7 +72,7 @@ def main():
     fem.run()
 
     # 結果を出力する
-    fem.output_txt("../../output/C3D8_test")
+    fem.output_txt(parent_dir + "/output/C3D8_test")
 
 if __name__ == '__main__':
     main()

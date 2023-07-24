@@ -1,10 +1,11 @@
 from os.path import dirname, abspath
 import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
+parent_dir = dirname(dirname(dirname(dirname(abspath(__file__)))))
 if parent_dir not in sys.path: 
     sys.path.append(parent_dir)
 
 from src.physics.node import Node
+from src.material.elastic.solid import ElasticSolid
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
 from physics.element.C3D8_Bbar import C3D8Bbar
@@ -17,12 +18,70 @@ class StaticStructure:
         
         # 初期化する
         self.id = id
-        self.file_name = '../../input/structural_input.dat'
+        self.input_file_path = "/input/structural_input.dat"
+        self.output_file_path = "/output/structral_result.dat"
+
+        self.nodes = []
+        self.connects = []
+        self.elems = []
+
+    #---------------------------------------------------------------------
+    # メッシュ情報を作成する
+    # 戻り値 nodes, connects
+    #---------------------------------------------------------------------
+    def create_model_mesh(self):
+
+        # 解析条件のinputファイルを開く
+        input_f = open(parent_dir + self.input_file_path, 'r')
         
-        # 解析モデルを作成する
+        # 初期化
+        commponent_list = []
+
+        # ファイルの読み込みを行う
+        while True:
+
+            # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+            str = input_f.readline()
+            str.rstrip('\n')
+
+            # 空白かどうかをチェックし、該当すれば読み取りを終了する
+            if str == '--------------------------------------------------------------------------|End|':
+                break
+
+            # 解析メッシュを作成する
+            if str == '---------------------------------------------------------------------|Geometry|':
+
+                # コメントアウトされていない文字列を探索する
+                while True:
+                    # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+                    str = input_f.readline()
+                    str.rstrip('\n')
+                    
+                    # 空白行でループを脱出する
+                    if str == '':
+                        break
+
+                    # タブで文字列を分解する
+                    str_list = str.split(' ')
+
+                    # コメントアウトされていないか確認する
+                    if str_list[0] != 'Mesh:':
+                        continue
+                    
+                    # コメントアウトされていない場合
+                    mesh_type = str_list[1]
+                    xlength = float(str_list[3])
+                    ylength = float(str_list[5])
+                    zlength = float(str_list[7])
+                    xdiv = float(str_list[9])
+                    ydiv = float(str_list[11])
+                    zdiv = float(str_list[13])
+
+                    #self.nodes, self.connects = auto_mesh(mesh_type, xlength, ylength, zlength, xdiv, ydiv, zdiv)
         
-        # inputファイルを開く
-        
+        # inputファイルを閉じる
+        input_f.close()
+
         # 解析メッシュを生成する
         node1 = Node(1, 0.0, 0.0, 0.0)
         node2 = Node(2, 1.0, 0.0, 0.0)
@@ -47,25 +106,173 @@ class StaticStructure:
         nodes1 = [node1, node2, node10, node9, node5, node6, node14, node13]
         nodes2 = [node2, node3, node11, node10, node6, node7, node15, node14]
         nodes3 = [node3, node4, node12, node11, node7, node8, node16, node15]
+        self.connects = [nodes1, nodes2, nodes3]
+
+        return self.nodes, self.connects
+
+    #---------------------------------------------------------------------
+    # コンポーネント情報をまとめたリストを作成する
+    # 戻り値 commponent_list
+    #---------------------------------------------------------------------    
+    def create_commponent(self):
         
-        # コンポーネント情報を読み取り、材料モデルを作成する
-        # 作成したデータから要素を生成する
-        # 材料特性を定義する
-        young = 210000.0
-        poisson = 0.3
-        density = 7850
-        mat = ElastoPlasticVonMisesSolid(young, poisson, density)
-        # 塑性硬化の条件を設定
-        mat.add_stress_plastic_strain_line(400000, 0.0)
-        mat.add_stress_plastic_strain_line(500000, 0.5)
-        mat.add_stress_plastic_strain_line(600000, 0.7)
-        mat.add_stress_plastic_strain_line(700000, 1.0)
+        # 解析条件のinputファイルを開く
+        input_f = open(parent_dir + self.input_file_path, 'r')
         
-        # 要素リストを定義する
-        elem1 = C3D8Bbar(1, nodes1, mat)
-        elem2 = C3D8Bbar(2, nodes2, mat)
-        elem3 = C3D8Bbar(3, nodes3, mat)
-        self.elems = [elem1, elem2, elem3]
+        # 初期化
+        commponent_list = []
+
+        # ファイルの読み込みを行う
+        while True:
+
+            # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+            str = input_f.readline()
+            str.rstrip()
+
+            # 空白かどうかをチェックし、該当すれば読み取りを終了する
+            if str == '--------------------------------------------------------------------------|End|':
+                break
+
+
+            # コンポーネント情報を取得する
+            if str == '--------------------------------------------------------------------|Component|¥n':
+                
+                # コメントアウトされていない文字列を探索する
+                while True:
+                    # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+                    str = input_f.readline()
+                    str.rstrip()
+                    
+                    # 空白行でループを脱出する
+                    if str == '':
+                        break
+
+                    # タブで文字列を分解する
+                    str_list = str.split(' ')
+
+                    # コメントアウトされていないか確認する
+                    if str_list[0] != 'Component:':
+                        continue
+
+                    # コメントアウトされていない場合
+                    commponent_list.append(str_list[1], str_list[3], str_list[5], str_list[7])
+        
+        # inputファイルを閉じる
+        input_f.close()
+
+        return commponent_list
+
+    #---------------------------------------------------------------------
+    # 材料モデルのlistを作成する
+    # 戻り値 material_list
+    #---------------------------------------------------------------------
+    def create_material_model(self):
+        
+        # 解析条件のinputファイルを開く
+        input_f = open(parent_dir + self.input_file_path, 'r')
+        
+        # 初期化
+        material_list = []
+
+        # ファイルの読み込みを行う
+        while True:
+
+            # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+            str = input_f.readline()
+            str.rstrip('\n')
+
+            # 空白かどうかをチェックし、該当すれば読み取りを終了する
+            if str == '--------------------------------------------------------------------------|End|':
+                break
+
+            # 材料物性を取得し、要素を作成する
+            if str == '---------------------------------------------------------------|Material_Model|':
+                
+                # コメントアウトされていない文字列を探索する
+                while True:
+                    # 文字列を1行読み込み、末尾の改行'\n'を取り除く
+                    str = input_f.readline()
+                    str.rstrip('\n')
+                    
+                    # 空白行でループを脱出する
+                    if str == '':
+                        break
+
+                    # タブで文字列を分解する
+                    str_list = str.split(' ')
+
+                    # コメントアウトされていないか確認する
+                    if str_list[0] != 'Mat:':
+                        continue
+
+                    # コメントアウトされていない場合
+                    if str_list[3] == 'ElasticSolid':
+                        id = str_list[2]
+                        mat = ElasticSolid(str_list[5], str_list[7], str_list[9])
+                        material_list.append(id, mat)
+                    
+                    elif str_list[3] == 'VonMisesSolid':
+                        id = str_list[2]
+                        mat = ElastoPlasticVonMisesSolid(str_list[5], str_list[7], str_list[9])
+                        # 塑性硬化の条件を設定
+                        mat.add_stress_plastic_strain_line(400000, 0.0)
+                        mat.add_stress_plastic_strain_line(500000, 0.5)
+                        mat.add_stress_plastic_strain_line(600000, 0.7)
+                        mat.add_stress_plastic_strain_line(700000, 1.0)
+                        material_list.append(id, mat)
+                    else:
+                        print('Error !')
+
+        # inputファイルを閉じる
+        input_f.close()
+
+        return material_list
+
+    #---------------------------------------------------------------------
+    # 要素情報を作成する
+    # 戻り値 elems
+    #---------------------------------------------------------------------
+    def create_elements(self, connects, commponent_list, material_list):
+        
+        # コンポーネントのループ
+        for id, elem_type, dvalue_type, range in commponent_list:
+            
+            # コンポーネントが指定する領域が全領域である場合
+            if range == 'All':
+                
+                # 取り扱っているコンポーネントのIDと一致する材料を探索する
+                for comp_id, mat in material_list:
+                    
+                    # 材料におけるコンポーネントIDの確認
+                    if id == comp_id:
+
+                        # 要素形状の確認
+                        if elem_type == 'C3D8_Bbar':
+
+                            # 全要素ループ
+                            counter = 0
+                            for connect in connects:
+                                self.elems.append(C3D8Bbar(counter+1, connect, mat))
+                                counter += 1
+                        
+                        # その他の要素形状
+                        else:
+                            a = 1
+
+        return self.elems
+
+    #---------------------------------------------------------------------
+    # 実際のモデルを作成する
+    #---------------------------------------------------------------------
+    def create_model(self):
+        
+        self.nodes, self.connects = self.create_model_mesh()
+
+        commponent_list = self.create_commponent()
+
+        material_list = self.create_material_model()
+
+        self.elems = self.create_elements(self.connects, commponent_list, material_list)
         
         # 拘束条件を設定する
         self.bound = Boundary(self.nodes)
@@ -79,5 +286,5 @@ class StaticStructure:
         self.bound.add_force(8, 0.0, 0.0, -10000.0)
         self.bound.add_force(12, 0.0, 0.0, -10000.0)
         self.bound.add_force(16, 0.0, 0.0, -10000.0)
-        
-        # inputファイルを閉じる
+
+        return self.nodes, self.elems, self.bound

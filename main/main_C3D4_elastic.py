@@ -1,6 +1,6 @@
 from os.path import dirname, abspath
 import sys
-parent_dir = dirname(dirname(dirname(abspath(__file__))))
+parent_dir = dirname(dirname(abspath(__file__)))
 if parent_dir not in sys.path: 
     sys.path.append(parent_dir)
 
@@ -647,7 +647,7 @@ def main():
     # 解析を行う
     fem = LinearFEM(nodes, elems, bound, 1)
     fem.run()
-    fem.output_txt("../../output/C3D4_test")
+    fem.output_txt(parent_dir + "/output/C3D4_test")
 
 if __name__ == '__main__':
     main()
