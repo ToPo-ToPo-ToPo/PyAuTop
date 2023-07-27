@@ -1,7 +1,7 @@
 =============================================================================================================
 Analysis_condition_for_PyOptOS
 =============================================================================================================
-ID 1 Main Analysis Mesh: Auto Physics: Static_Structure Method: Nonlinear_FEM Num_step: 10
+ID 1 Main Analysis Mesh: Auto Physics: Static_Structure Method: Nonlinear_FEM Num_step: 1
 //ID 2 Sub Analysis Mesh: Auto Physics: Static_Structure Method: Nonlinear_FEM Num_step: 1
 //ID 2 Sub Analysis Mesh: Auto Physics: Steady_Thermal_Diffusion Method: Nonlinear_FEM Num_step: 1
 //ID 3 Main MultiphysicsAnalysis Analysis_ID: 1 Analysis_ID: 2 MappingVariable: Temperature Num_step: 1

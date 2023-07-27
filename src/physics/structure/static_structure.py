@@ -8,6 +8,7 @@ from src.physics.node import Node
 from src.material.elastic.solid import ElasticSolid
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
+from src.physics.element.C3D8 import C3D8
 from src.physics.element.C3D8_Bbar import C3D8Bbar
 #=============================================================================
 #
@@ -263,14 +264,20 @@ class StaticStructure:
                         continue
 
                     # 要素形状の確認
-                    if elem_type == 'C3D8_Bbar':
+                    if elem_type == 'C3D8':
 
+                        # 全要素ループ
+                        counter = 0
+                        for connect in connects:
+                            self.elems.append(C3D8(counter+1, connect, mat))
+                            counter += 1
+
+                    elif elem_type == 'C3D8_Bbar':
                         # 全要素ループ
                         counter = 0
                         for connect in connects:
                             self.elems.append(C3D8Bbar(counter+1, connect, mat))
                             counter += 1
-                        
                     # その他の要素形状
                     else:
                         a = 1

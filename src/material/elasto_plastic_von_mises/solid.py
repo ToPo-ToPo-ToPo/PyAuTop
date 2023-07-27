@@ -286,6 +286,8 @@ class ElastoPlasticVonMisesSolid:
         
         vecDStress = matP @ vecStress
         
+        tmppp = np.matrix(vecDStress)
+
         tmp1 = np.array(matA @ (np.matrix(vecDStress).T * np.matrix(vecDStress)) @ matA)
         tmp2 = (4.0 / 9.0) * a * hDash * mStress ** 2 + (np.matrix(vecDStress) @ matA @ np.matrix(vecDStress).T)[0,0]
         
