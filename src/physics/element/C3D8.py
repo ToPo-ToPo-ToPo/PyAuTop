@@ -243,7 +243,7 @@ class C3D8(ElementBase):
         for ip in range(self.ipNum):
             
             # Bマトリックスを作成
-            matB = self.make_B_matrix(self.ai[ip], self.bi[ip], self.ci[ip])
+            matB = self.make_B_matrix(ip)
             
             # 構成則の内部変数の更新
             self.material[ip].compute_stress_and_tangent_matrix(matB, elem_solution)
