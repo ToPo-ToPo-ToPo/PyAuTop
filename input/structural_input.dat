@@ -16,5 +16,5 @@ Mat: Component: 1 VonMisesSolid Young: 210.0e+03 Poi: 0.3 Mass: 7850.0 Plasticit
 Analysis: 1 Fixed_Disp flag: 1 1 1 Val: 0.0 0.0 0.0 Range: 0.0 <x< 0.0 0.0 <y< 1000.0 0.0 <z< 1000.0 Type: Constant
 -
 ------------------------------------------------------------|Neumman_Condition|
-Analysis: 1 Point_Load Val: 0.0 0.0 -2500.0 Range: 3.0 <x< 3.0 0.0 <y< 1.0 0.0 <z< 1.0 Type: Linear
+Analysis: 1 Point_Load Val: 0.0 0.0 -25000.0 Range: 3.0 <x< 3.0 0.0 <y< 1.0 0.0 <z< 1.0 Type: Linear
 -
