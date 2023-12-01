@@ -5,11 +5,15 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from src.physics.node import Node
+from src.physics.node_2d import Node2d
 from src.material.elastic.solid import ElasticSolid
+from src.material.elastic.solid_2d_plane_stress import ElasticSolidPlaneStress
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
+from src.boundary_2d import Boundary2d
 from src.physics.element.C3D8 import C3D8
 from src.physics.element.C3D8_Bbar import C3D8Bbar
+from src.physics.element.CPS4 import CPS4
 #=============================================================================
 #
 #=============================================================================
@@ -116,6 +120,41 @@ class StaticStructure:
                                                           nodeID5, nodeID6, nodeID7, nodeID8])
 
                         #self.nodes, self.connects = auto_mesh(mesh_type, xlength, ylength, zlength, xdiv, ydiv, zdiv)
+                        
+                    # kato(20231128)
+                    elif mesh_type == "CPS4":
+                        xlength = float(str_list[3])
+                        ylength = float(str_list[5])
+                        xdiv = int(str_list[7])
+                        ydiv = int(str_list[9])
+                    
+                        delta_x = float(xlength) / float(xdiv)
+                        delta_y = float(ylength) / float(ydiv)
+                        
+                        # ボクセルメッシュを作成する
+                        # 節点座標の作成
+                        for i in range(ydiv+1):
+                            for j in range(xdiv+1):
+                                id = j + i*(1+xdiv) 
+                                x = delta_x * j
+                                y = delta_y * i
+                            
+                                # 節点の生成
+                                self.nodes.append(Node2d(int(id+1), float(x), float(y)))	
+        
+                        # コネクティビティの作成
+                        for i in range(ydiv):
+                            for j in range(xdiv):
+                                
+                                # コネクティビティの指定（4節点反時計回り）
+                                nodeID1 = self.nodes[(xdiv+1) * i + j]
+                                nodeID2 = self.nodes[(xdiv+1) * i + j + 1]
+                                nodeID3 = self.nodes[(xdiv+1) * i + j + 1 + (xdiv+1)]
+                                nodeID4 = self.nodes[(xdiv+1) * i + j     + (xdiv+1)]
+
+                                # 要素の生成
+                                self.connects.append([nodeID1, nodeID2, nodeID3, nodeID4])
+                
                     else:
                         print('mesh type: ' + mesh_type + 'は実装されていません。')
                         exit()
@@ -236,6 +275,11 @@ class StaticStructure:
                         mat.add_stress_plastic_strain_line(600000, 0.7)
                         mat.add_stress_plastic_strain_line(700000, 1.0)
                         material_list.append([id, mat])
+                        
+                    elif str_list[3] == 'ElasticPlaneStress':
+                        id = str_list[2]
+                        mat = ElasticSolidPlaneStress(float(str_list[5]), float(str_list[7]), float(str_list[9]))
+                        material_list.append([id, mat])
                     else:
                         print('Error !')
 
@@ -277,6 +321,13 @@ class StaticStructure:
                         counter = 0
                         for connect in connects:
                             self.elems.append(C3D8Bbar(counter+1, connect, mat))
+                            counter += 1
+
+                    elif elem_type == 'CPS4':
+                        # 全要素ループ
+                        counter = 0
+                        for connect in connects:
+                            self.elems.append(CPS4(counter+1, connect, mat))
                             counter += 1
                     # その他の要素形状
                     else:
@@ -323,39 +374,70 @@ class StaticStructure:
                     if str_list[0] != 'Analysis:':
                         continue
                     
-                    xmin = float(str_list[12]) - 1e-05
-                    xmax = float(str_list[14]) + 1e-05
-                    ymin = float(str_list[15]) - 1e-05
-                    ymax = float(str_list[17]) + 1e-05
-                    zmin = float(str_list[18]) - 1e-05
-                    zmax = float(str_list[20]) + 1e-05
+                    # 3Dか2Dか確認
+                    if self.nodes[0].num_dof == 3:
+                        xmin = float(str_list[12]) - 1e-05
+                        xmax = float(str_list[14]) + 1e-05
+                        ymin = float(str_list[15]) - 1e-05
+                        ymax = float(str_list[17]) + 1e-05
+                        zmin = float(str_list[18]) - 1e-05
+                        zmax = float(str_list[20]) + 1e-05
+                        
+                        # 該当する節点を探索する 
+                        for node in nodes:
+                            if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
+                                
+                                # フラグのチェックを行う
+                                flag_x = str_list[4]
+                                flag_y = str_list[5]
+                                flag_z = str_list[6]
+                                
+                                if flag_x == '1':
+                                    val_x = str_list[8]
+                                else:
+                                    val_x = None
+
+                                if flag_y == '1':
+                                    val_y = str_list[9]
+                                else:
+                                    val_y = None
+
+                                if flag_z == '1':
+                                    val_z = str_list[10]
+                                else:
+                                    val_z = None
+
+                                self.bound.add_SPC(node.no, float(val_x), float(val_y), float(val_z))
                     
-                    # 該当する節点を探索する 
-                    for node in nodes:
-                        if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
-                            
-                            # フラグのチェックを行う
-                            flag_x = str_list[4]
-                            flag_y = str_list[5]
-                            flag_z = str_list[6]
-                            
-                            if flag_x == '1':
-                                val_x = str_list[8]
-                            else:
-                                val_x = None
+                    elif self.nodes[0].num_dof == 2:
+                        xmin = float(str_list[12]) - 1e-05
+                        xmax = float(str_list[14]) + 1e-05
+                        ymin = float(str_list[15]) - 1e-05
+                        ymax = float(str_list[17]) + 1e-05
+                        
+                        # 該当する節点を探索する 
+                        for node in nodes:
+                            if xmin < node.x < xmax and ymin < node.y < ymax:
+                                
+                                # フラグのチェックを行う
+                                flag_x = str_list[4]
+                                flag_y = str_list[5]
+                                
+                                if flag_x == '1':
+                                    val_x = str_list[8]
+                                else:
+                                    val_x = None
 
-                            if flag_y == '1':
-                                val_y = str_list[9]
-                            else:
-                                val_y = None
+                                if flag_y == '1':
+                                    val_y = str_list[9]
+                                else:
+                                    val_y = None
 
-                            if flag_z == '1':
-                                val_z = str_list[10]
-                            else:
-                                val_z = None
-
-                            self.bound.add_SPC(node.no, float(val_x), float(val_y), float(val_z))
-        
+                                self.bound.add_SPC(node.no, float(val_x), float(val_y))
+                        
+                        else:
+                            a=1
+                        
         # inputファイルを閉じる
         input_f.close()
         
@@ -398,21 +480,40 @@ class StaticStructure:
                     if str_list[0] != 'Analysis:':
                         continue
                     
-                    xmin = float(str_list[8])  - 1e-05
-                    xmax = float(str_list[10]) + 1e-05
-                    ymin = float(str_list[11]) - 1e-05
-                    ymax = float(str_list[13]) + 1e-05
-                    zmin = float(str_list[14]) - 1e-05
-                    zmax = float(str_list[16]) + 1e-05
-                    
-                    # 該当する節点を探索する
-                    for node in nodes:
-                        if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
-                            val_x = str_list[4]
-                            val_y = str_list[5]
-                            val_z = str_list[6]
+                    # 2Dか3Dか確認
+                    if self.nodes[0].num_dof == 3:
+                        xmin = float(str_list[8])  - 1e-05
+                        xmax = float(str_list[10]) + 1e-05
+                        ymin = float(str_list[11]) - 1e-05
+                        ymax = float(str_list[13]) + 1e-05
+                        zmin = float(str_list[14]) - 1e-05
+                        zmax = float(str_list[16]) + 1e-05
+                        
+                        # 該当する節点を探索する
+                        for node in nodes:
+                            if xmin < node.x < xmax and ymin < node.y < ymax and zmin < node.z < zmax:
+                                val_x = str_list[4]
+                                val_y = str_list[5]
+                                val_z = str_list[6]
 
-                            self.bound.add_force(node.no, float(val_x), float(val_y), float(val_z))
+                                self.bound.add_force(node.no, float(val_x), float(val_y), float(val_z))
+                    
+                    elif self.nodes[0].num_dof == 2:
+                        xmin = float(str_list[8])  - 1e-05
+                        xmax = float(str_list[10]) + 1e-05
+                        ymin = float(str_list[11]) - 1e-05
+                        ymax = float(str_list[13]) + 1e-05
+                        
+                        # 該当する節点を探索する
+                        for node in nodes:
+                            if xmin < node.x < xmax and ymin < node.y < ymax:
+                                val_x = str_list[4]
+                                val_y = str_list[5]
+
+                                self.bound.add_force(node.no, float(val_x), float(val_y))
+                                
+                    else:
+                        a = 1
         
         # inputファイルを閉じる
         input_f.close()
@@ -435,7 +536,13 @@ class StaticStructure:
         self.elems = self.create_elements(self.connects, commponent_list, material_list)
         
         # 拘束条件を設定する
-        self.bound = Boundary(self.nodes)
+        # 3Dか2Dかの判定
+        if self.nodes[0].num_dof == 3:
+            self.bound = Boundary(self.nodes)
+        elif self.nodes[0].num_dof == 2:
+            self.bound = Boundary2d(self.nodes)  
+        else:
+            a = 1
         self.create_dirichilet_condition(self.nodes)
         
         # 荷重条件を設定する
