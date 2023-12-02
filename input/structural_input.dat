@@ -4,7 +4,7 @@ Structural_analysis_input_data_for_Auto_Mesh
 -
 ---------------------------------------------------------------------|Geometry|
 //Mesh: C3D8 xlength: 3.0 ylength: 1.0 zlength: 1.0 xdiv: 30 ydiv: 10 zdiv: 10
-Mesh: CPS4 xlength: 3.0 ylength: 1.0 xdiv: 90 ydiv: 30
+Mesh: CPS4 xlength: 3.0 ylength: 1.0 xdiv: 6 ydiv: 2
 -
 --------------------------------------------------------------------|Component|
 //Component: 1 Element_Type: C3D8 Optimal_Domain: Design_val Range: All

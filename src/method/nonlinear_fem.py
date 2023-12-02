@@ -205,8 +205,14 @@ class NonlinearFEM(FEMBase):
             strNo = str(node.no).rjust(columNum)
             strX = str(format(node.x, floatDigits).rjust(columNum))
             strY = str(format(node.y, floatDigits).rjust(columNum))
-            strZ = str(format(node.z, floatDigits).rjust(columNum))
-            f.write(strNo + strX + strY + strZ + "\n")
+            # 3Dか2Dか判定
+            if self.nodes[0] == 3:
+                strZ = str(format(node.z, floatDigits).rjust(columNum))
+                f.write(strNo + strX + strY + strZ + "\n")
+            elif self.nodes[0] == 2:
+                f.write(strNo + strX + strY + "\n")
+            else:
+                a = 1
         f.write("\n")
 
         # 要素情報を出力する
@@ -306,8 +312,14 @@ class NonlinearFEM(FEMBase):
                 strMag = str(format(mag, floatDigits).rjust(columNum))
                 strXDisp = str(format(solution[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
                 strYDisp = str(format(solution[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
-                strZDisp = str(format(solution[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
-                f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")            
+                # 3Dか2Dか判定
+                if self.nodes[0] == 3:
+                    strZDisp = str(format(solution[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
+                    f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")
+                elif self.nodes[0] == 2:
+                    f.write(strNo + strMag + strXDisp + strYDisp + "\n")
+                else:
+                    a = 1          
             f.write("\n")
 
             # 応力データを出力する
@@ -386,8 +398,14 @@ class NonlinearFEM(FEMBase):
                 strMag = str(format(mag, floatDigits).rjust(columNum))
                 strXForce = str(format(vecRF[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
                 strYForce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
-                strZForce = str(format(vecRF[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
-                f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
+                # 3Dか2Dか判定
+                if self.nodes[0] == 3:
+                    strZForce = str(format(vecRF[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
+                    f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")
+                elif self.nodes[0] == 2:
+                    f.write(strNo + strMag + strXForce + strYForce + "\n")
+                else:
+                    a = 1    
             f.write("\n")
 
         # ファイルを閉じる

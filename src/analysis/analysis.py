@@ -13,6 +13,7 @@ from src.physics.node import Node
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
 from src.physics.element.C3D8_Bbar import C3D8Bbar
+from src.output.output import Output
 #=============================================================================
 #
 #=============================================================================
@@ -52,10 +53,6 @@ class Analysis:
              # 非線形解析の有限要素法を使用する
             elif method_type == 'Nonlinear_FEM':
                 self.method = NonlinearFEM(nodes, elems, bound, int(num_step))
-                
-             # 非線形解析の有限要素法を使用する
-            elif method_type == 'Nonlinear_FEM_2D':
-                self.method = NonlinearFEM2d(nodes, elems, bound, int(num_step))
             
             else:
                 a = 1
@@ -74,4 +71,6 @@ class Analysis:
 
         # 結果を出力する
         # self.method.output_txt(parent_dir +  "/output/C3D8_test_r1")
-        self.method.output_vtk(parent_dir +  "/output/CPS4_test")
+        # self.method.output_vtk(parent_dir +  "/output/CPS4_test")
+        self.output = Output(self.method)
+        self.output.output_vtk(parent_dir +  "/output/CPS4_test")
