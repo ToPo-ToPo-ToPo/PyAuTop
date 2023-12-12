@@ -24,10 +24,18 @@ class ElasticSolidPlaneStress:
         self.vecEStrain = np.zeros(3)  # 要素内の弾性ひずみ
         self.vecStress = np.zeros(3)  # 要素内の応力
         self.mises = 0.0  # 要素内のミーゼス応力
+        self.z_strain = np.zeros(1) # z方向のひずみ
 
         # Dマトリックスを初期化する
         self.matD = DmatrixPlaneStress(young, poisson).make_De_matrix()
-        
+    
+    #---------------------------------------------------------------------
+    # 材料物性を更新する
+    #---------------------------------------------------------------------
+    def update_paramater(self, design_density):
+        self.young[1] = self.young[0] * design_density**3.0
+        self.density[1] = self.density[0] * design_density
+                
     #---------------------------------------------------------------------
     # 応力を更新する
     # solution : 要素節点の変位ベクトル(np.array型)
@@ -41,7 +49,7 @@ class ElasticSolidPlaneStress:
         self.vecStress = self.matD @ vecStrain
 
         # z方向のひずみを求める
-        vecStrain[2] = - (self.poisson / self.young) * (self.vecStress[0] + self.vecStress[1])
+        self.z_strain = - (self.poisson / self.young) * (self.vecStress[0] + self.vecStress[1])
 
         # mises応力を求める
         self.mises = self.mises_stress(self.vecStress)
