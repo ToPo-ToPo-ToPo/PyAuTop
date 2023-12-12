@@ -6,6 +6,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from src.analysis.analysis import Analysis
+from src.analysis.optimization_analysis import OptimizationAnalysisElementBaseDensityMethod
 #=============================================================================
 #
 #=============================================================================
@@ -41,9 +42,28 @@ class Command:
             if str_list[0] != 'ID':
                 continue          
 
+            # 解析情報の作成
             if str_list[3] == 'Analysis':
                 # analysisクラスに代入する
                 self.analysis_list.append(Analysis(str_list[1], str_list[2], str_list[5], str_list[7], str_list[9], str_list[11]))
+                
+            # 要素ベースの密度法トポロジー最適化解析
+            elif str_list[3] == 'Topology_Optimization_Element_Base_Density_Method':
+                
+                # FEMの解析番号を取得
+                include_analysis_ID = str_list[5]
+                
+                # FEMの解析のIDとトポロジー最適化でしているFEMのIDが一致するかどうかチェック
+                ID = -1
+                for ia in range(len(self.analysis_list)):
+                    if self.analysis_list[ia].id == include_analysis_ID:
+                        ID = ia
+                        break
+                if ID == -1:
+                    raise ValueError("Error ! Fault analysis_ID")
+                
+                # OptimizationAnalysisElementBaseDensityMethodクラスに代入する
+                self.analysis_list.append(OptimizationAnalysisElementBaseDensityMethod(str_list[2], str_list[5], str_list[7], self.analysis_list))
             
         # 最後にファイルを閉じる
         command_f.close()
