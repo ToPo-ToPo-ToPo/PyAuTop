@@ -72,5 +72,5 @@ class Analysis:
         # 結果を出力する
         # self.method.output_txt(parent_dir +  "/output/C3D8_test_r1")
         # self.method.output_vtk(parent_dir +  "/output/CPS4_test")
-        self.output = Output(self.method)
-        self.output.output_vtk(parent_dir +  "/output/CPS4_test")
+        # self.output = Output(self.method)
+        # self.output.output_vtk(parent_dir +  "/output/CPS4_test")
