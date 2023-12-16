@@ -19,6 +19,7 @@ class Output:
         self.num_step = method.num_step
         self.solution_list = method.solution_list  # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.Freact_list = method.Freact_list      # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
+        self.design_variable = method.design_variable  # 設計変数（np.array型のリスト）
 
     #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
@@ -327,6 +328,14 @@ class Output:
                 strYforce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits))
                 strZforce = str(format(0.0, floatDigits))
                 f.write(strXforce + " " + strYforce + " " + strZforce + "\n")
+                
+            # 設計変数のデータを出力する
+            f.write("CELL_DATA" + " " + str(len(self.elements)) + "\n")
+            f.write("SCALARS Design_Variable float\n")
+            f.write("LOOKUP_TABLE default\n")
+            for j in range(len(self.elements)):
+                strDesignVariable = str(format(self.design_variable[j], floatDigits))
+                f.write(strDesignVariable + "\n")
         
         #ファイルを閉じる
         f.close()
