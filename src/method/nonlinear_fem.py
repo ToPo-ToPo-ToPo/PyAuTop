@@ -23,6 +23,7 @@ class NonlinearFEM(FEMBase):
         self.nodes = nodes                 # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
         self.elements = elements           # 要素は種類ごとにソートされている前提(リスト)
         self.bound = bound                 # 境界条件(d2Boundary型)
+        self.design_variable = []          # 設計変数（結果格納用）
         
         self.num_step = num_step           # インクリメント数
         self.itr_max = 20                  # ニュートン法のイテレータの上限
@@ -84,7 +85,7 @@ class NonlinearFEM(FEMBase):
             solution_bar = solution_bar_list[istep]            # istep番目のdirichlet境界の規定値
 
             # 接線剛性マトリクスKtを作成する
-            Kt = self.make_K()
+            self.Kt = self.make_K()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
             if istep == 0:
@@ -93,7 +94,7 @@ class NonlinearFEM(FEMBase):
                 R = Fext_list[istep] - Fext_list[istep - 1]
 
             # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-            Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
+            Ktc, Rc = self.set_bound_condition(self.Kt, R, solution_bar, solution)
 
             # 初期の残差ノルムを計算する
             residual0 = LA.norm(Rc)
@@ -117,14 +118,14 @@ class NonlinearFEM(FEMBase):
                 self.update_element_data(solution)
 
                 # 新たな接線剛性マトリクスKtを作成する
-                Kt = self.make_K()
+                self.Kt = self.make_K()
 
                 # 新たな残差力ベクトルRを求める
                 Fint = self.make_Fint()
                 R = Fext - Fint
 
                 # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
+                Ktc, Rc = self.set_bound_condition(self.Kt, R, solution_bar, solution)
 
                 # 収束判定に必要な変数を計算する
                 check_flag, solution_rate, residual_rate = self.check_convergence(Fint, Rc, solution, solution_first, delta_solution)

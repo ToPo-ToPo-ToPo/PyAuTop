@@ -14,16 +14,6 @@ class DmatrixPlaneStress:
     # 弾性状態のDマトリクスを作成する
     def make_De_matrix(self):
         tmp = self.young / (1 - self.poisson * self.poisson)
-        # matD = np.array(
-        #     [
-        #         [1.0, - self.poisson, 0.0, 0.0, 0.0, 0.0],
-        #         [- self.poisson, 1.0, 0.0, 0.0, 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.5 * (1.0 - self.poisson), 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        #     ]
-        # )
         matD = np.array(
             [
                 [1.0, - self.poisson, 0.0],
@@ -35,3 +25,18 @@ class DmatrixPlaneStress:
         matD = tmp * matD
 
         return matD
+    
+    # 弾性状態のC0マトリクスを作成する
+    def make_C0_matrix(self):
+        tmp = 1 / (1 - self.poisson * self.poisson)
+        matC0 = np.array(
+            [
+                [1.0, self.poisson, 0.0],
+                [self.poisson, 1.0, 0.0],
+                [0.0, 0.0, 0.5 * (1.0 - self.poisson)]
+            ]
+        )
+
+        matC0 = tmp * matC0
+
+        return matC0

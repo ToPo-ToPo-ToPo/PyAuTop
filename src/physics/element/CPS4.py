@@ -24,6 +24,7 @@ class CPS4(ElementBase):
         self.nodes = nodes             # nodesは反時計回りの順番になっている前提(Node2d型のリスト形式)
         self.material = []             # 材料モデルのリスト
         self.vecGravity = vecGravity   # 重力加速度のベクトル(np.array型)
+        self.Emin = 1e-8             # 最小のヤング率
         
         self.ipNum = 4                 # 積分点の数
         self.w1 = [1.0, 1.0, 1.0, 1.0]  # 積分点の重み係数1
@@ -67,6 +68,34 @@ class CPS4(ElementBase):
             Ke += self.w1[ip] * self.w2[ip] * matB.T @ self.material[ip].matD @ matB * LA.det(matJ)
 
         return Ke
+    
+    #---------------------------------------------------------------------
+    # 要素剛性マトリクスの微分dKeを作成する
+    #---------------------------------------------------------------------
+    def make_dK(self, design_variable_i, penal):
+
+        # 初期化
+        dKe = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
+
+        # 積分点ループ
+        for ip in range(self.ipNum):
+            
+            # ヤング率の設計変数での微分
+            dEds = penal * (self.material[ip].young - self.Emin) * design_variable_i ** (penal -1)
+            
+            # ヤコビ行列を計算する
+            matJ = self.make_J_matrix(ip)
+
+            # Bマトリクスを計算する
+            matB = self.make_B_matrix(ip)
+            
+            # ヤング率の感度とヤング率に依存しないところを掛け合わせる
+            Cm = dEds * self.material[ip].matC0
+
+            # Ketマトリクスをガウス積分で計算する
+            dKe += self.w1[ip] * self.w2[ip] * matB.T @ Cm @ matB * LA.det(matJ)
+
+        return dKe
     
     #---------------------------------------------------------------------
     # 内力ベクトルFintを作成する

@@ -4,7 +4,7 @@ Structural_analysis_input_data_for_Auto_Mesh
 -
 ---------------------------------------------------------------------|Geometry|
 //Mesh: C3D8 xlength: 3.0 ylength: 1.0 zlength: 1.0 xdiv: 30 ydiv: 10 zdiv: 10
-Mesh: CPS4 xlength: 3.0 ylength: 1.0 xdiv: 6 ydiv: 2
+Mesh: CPS4 xlength: 3.0 ylength: 1.0 xdiv: 90 ydiv: 30
 -
 --------------------------------------------------------------------|Component|
 //Component: 1 Element_Type: C3D8 Optimal_Domain: Design_val Range: All
@@ -21,5 +21,5 @@ Analysis: 1 Fixed_Disp flag: 1 1 1 Val: 0.0 0.0 0.0 Range: 0.0 <x< 0.0 0.0 <y< 1
 -
 ------------------------------------------------------------|Neumman_Condition|
 //Analysis: 1 Point_Load Val: 0.0 0.0 -20000.0 Range: 3.0 <x< 3.0 0.0 <y< 1.0 0.0 <z< 1.0 Type: Linear
-Analysis: 1 Point_Load Val: 0.0 10000.0 0.0 Range: 3.0 <x< 3.0 0.0 <y< 1.0 0.0 <z< 1.0 Type: Linear
+Analysis: 1 Point_Load Val: 0.0 -10000.0 0.0 Range: 3.0 <x< 3.0 0.0 <y< 1.0 0.0 <z< 1.0 Type: Linear
 -

@@ -127,6 +127,8 @@ class StaticStructure:
                         ylength = float(str_list[5])
                         xdiv = int(str_list[7])
                         ydiv = int(str_list[9])
+                        self.xdiv = int(str_list[7])
+                        self.ydiv = int(str_list[9])
                     
                         delta_x = float(xlength) / float(xdiv)
                         delta_y = float(ylength) / float(ydiv)

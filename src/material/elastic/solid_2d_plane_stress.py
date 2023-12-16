@@ -16,31 +16,39 @@ class ElasticSolidPlaneStress:
     # density     : 密度
     def __init__(self, young, poisson, density):
         # インスタンス変数を定義する
-        self.young = young  # ヤング率
-        self.poisson = poisson  # ポアソン比
-        self.density = density  # 密度
+        self.young_list = [young, 1e-8]  # ヤング率のリスト[材料のヤング率, 設計変数を考慮したヤング率]
+        self.density_list = [density, 1e-8]  # 密度のリスト[材料の質量密度, 設計変数を考慮した質量密度]
 
+        self.poisson = poisson  # ポアソン比
+        
         # 関連する変数を初期化する
         self.vecEStrain = np.zeros(3)  # 要素内の弾性ひずみ
         self.vecStress = np.zeros(3)  # 要素内の応力
         self.mises = 0.0  # 要素内のミーゼス応力
         self.z_strain = np.zeros(1) # z方向のひずみ
+        self.epsilon = 1e-8
 
         # Dマトリックスを初期化する
         self.matD = DmatrixPlaneStress(young, poisson).make_De_matrix()
+        
+        # C0マトリックス（Dマトリックスのヤング率に依存しないところ）を作成する
+        self.matC0 = DmatrixPlaneStress(young, poisson).make_C0_matrix()
     
     #---------------------------------------------------------------------
     # 材料物性を更新する
     #---------------------------------------------------------------------
-    def update_paramater(self, design_density):
-        self.young[1] = self.young[0] * design_density**3.0
-        self.density[1] = self.density[0] * design_density
+    def update_parameter(self, design_density):
+        self.young_list[-1] = (self.young_list[0] - self.epsilon) * design_density**3.0 + self.epsilon
+        self.density_list[-1] = self.density_list[0] * design_density
                 
     #---------------------------------------------------------------------
     # 応力を更新する
     # solution : 要素節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
     def compute_stress_and_tangent_matrix(self, matB, solution):
+        
+        self.young = self.young_list[-1] # 設計変数を考慮したヤング率
+        self.density = self.density_list[-1] # 設計変数を考慮した質量密度
         
         # 全ひずみを求める
         vecStrain = matB @ solution 
