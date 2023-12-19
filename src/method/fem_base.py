@@ -2,6 +2,7 @@
 import abc
 import numpy as np
 import numpy.linalg as LA
+from scipy.sparse import lil_matrix
 from concurrent import futures
 
 #=============================================================================
@@ -78,6 +79,7 @@ class FEMBase(FEMInterface):
                 Fint[elem.dof_list[i]] += Fe[i]
         
         return Fint
+    
     #---------------------------------------------------------------------
     # 節点に負荷する荷重、等価節点力を考慮した荷重ベクトルを作成する
     #---------------------------------------------------------------------
