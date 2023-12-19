@@ -14,6 +14,7 @@ from src.boundary_2d import Boundary2d
 from src.physics.element.C3D8 import C3D8
 from src.physics.element.C3D8_Bbar import C3D8Bbar
 from src.physics.element.CPS4 import CPS4
+import src.model_creator.automesh_quad4 as mesh4
 #=============================================================================
 #
 #=============================================================================
@@ -129,6 +130,8 @@ class StaticStructure:
                         ydiv = int(str_list[9])
                         self.xdiv = int(str_list[7])
                         self.ydiv = int(str_list[9])
+
+                        #self.nodes, self.connects = mesh4.create_voxel_mesh_for_quad4(xdiv, ydiv, xlength, ylength)
                     
                         delta_x = float(xlength) / float(xdiv)
                         delta_y = float(ylength) / float(ydiv)

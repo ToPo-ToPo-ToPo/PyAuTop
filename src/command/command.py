@@ -6,7 +6,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from src.analysis.analysis import Analysis
-from src.analysis.optimization_analysis import OptimizationAnalysisElementBaseDensityMethod
+#from src.analysis.optimization_analysis import OptimizationAnalysisElementBaseDensityMethod
 #=============================================================================
 #
 #=============================================================================
@@ -63,7 +63,7 @@ class Command:
                     raise ValueError("Error ! Fault analysis_ID")
                 
                 # OptimizationAnalysisElementBaseDensityMethodクラスに代入する
-                self.analysis_list.append(OptimizationAnalysisElementBaseDensityMethod(str_list[2], str_list[5], str_list[7], self.analysis_list))
+                #self.analysis_list.append(OptimizationAnalysisElementBaseDensityMethod(str_list[2], str_list[5], str_list[7], self.analysis_list))
             
         # 最後にファイルを閉じる
         command_f.close()
