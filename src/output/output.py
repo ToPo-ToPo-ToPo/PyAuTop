@@ -208,8 +208,8 @@ class Output:
 
             # 塑性ひずみデータを出力する
             f.write("***** Plastic Strain Data ******\n")
-            f.write("Element No".rjust(columNum) + "Integral No".rjust(columNum) + "PStrain XX".rjust(columNum) + "PStrain YY".rjust(columNum) + 
-                    "PStrain ZZ".rjust(columNum) + "PStrain XY".rjust(columNum) + "PStrain XZ".rjust(columNum) + "PStrain YZ".rjust(columNum) + 
+            f.write("Element No".rjust(columNum) + "Integral No".rjust(columNum) + "PStrain XX".rjust(columNum) + "PStrain YY".rjust(columNum) +
+                    "PStrain ZZ".rjust(columNum) + "PStrain XY".rjust(columNum) + "PStrain XZ".rjust(columNum) + "PStrain YZ".rjust(columNum) +
                     "Equivalent Plastic Strain".rjust(30) + "\n")
             f.write("-" * (columNum * 8 + 30) + "\n")
             for elemOutputData in self.elem_output_data_list[i]:
@@ -222,15 +222,15 @@ class Output:
                     strPStrainZZ = str(format(elemOutputData.vecIpPStrainList[j][2], floatDigits).rjust(columNum))
                     strPStrainXY = str(format(elemOutputData.vecIpPStrainList[j][5], floatDigits).rjust(columNum))
                     strPStrainXZ = str(format(elemOutputData.vecIpPStrainList[j][4], floatDigits).rjust(columNum))
-                    strPStrainYZ = str(format(elemOutputData.vecIpPStrainList[j][3], floatDigits).rjust(columNum))                    
+                    strPStrainYZ = str(format(elemOutputData.vecIpPStrainList[j][3], floatDigits).rjust(columNum))
                     strEPStrain = str(format(elemOutputData.ipEPStrainList[j], floatDigits).rjust(30))
-                    f.write(strElemNo + strIntNo + strPStrainXX + strPStrainYY + strPStrainZZ + 
+                    f.write(strElemNo + strIntNo + strPStrainXX + strPStrainYY + strPStrainZZ +
                             strPStrainXY + strPStrainXZ + strPStrainYZ + strEPStrain + "\n")
-            f.write("\n") """          
+            f.write("\n") """
 
             # 反力のデータを出力する
             f.write("***** Reaction Force Data ******\n")
-            f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + 
+            f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) +
                     "Z Force".rjust(columNum) + "\n")
             f.write("-" * columNum * 5 + "\n")
             for j in range(len(self.nodes)):
@@ -247,25 +247,25 @@ class Output:
                 elif self.nodes[0] == 2:
                     f.write(strNo + strMag + strXForce + strYForce + "\n")
                 else:
-                    a = 1    
+                    a = 1
             f.write("\n")
 
         # ファイルを閉じる
         f.close()
-        
-        
+
+
     #---------------------------------------------------------------------
     # 解析結果をvtkファイルに出力する
     # kato(20231129)
     #---------------------------------------------------------------------
     def output_vtk(self, filePath):
-        
+
         # ファイルを作成し、開く
         f = open(filePath + ".txt", "w")
-        
+
         # 出力する文字の情報を定義する
         floatDigits = ".10g"
-        
+
         # vtkファイルのバージョンを指定する
         f.write("# vtk DataFile Version 2.0\n")
         
@@ -336,6 +336,18 @@ class Output:
             for j in range(len(self.elements)):
                 strDesignVariable = str(format(self.design_variable[j], floatDigits))
                 f.write(strDesignVariable + "\n")
+                
+            f.write("SCALARS Young float\n")
+            f.write("LOOKUP_TABLE default\n")
+            for j in range(len(self.elements)):
+                total_young = 0
+                for k in range(self.elements[j].ipNum):
+                    total_young = total_young + self.elements[j].material[k].young
+                
+                average_young = total_young / self.elements[j].ipNum
+                
+                strAveYoung = str(format(average_young, floatDigits))
+                f.write(strAveYoung + "\n")
         
         #ファイルを閉じる
         f.close()
