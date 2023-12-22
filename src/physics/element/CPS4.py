@@ -81,7 +81,8 @@ class CPS4(ElementBase):
         for ip in range(self.ipNum):
             
             # ヤング率の設計変数での微分
-            dEds = penal * (self.material[ip].young - self.Emin) * design_variable_i ** (penal -1)
+            # dEds = penal * (self.material[ip].young - self.Emin) * design_variable_i ** (penal -1)
+            dEds = penal * (self.material[ip].young_list[-1] - self.Emin) * design_variable_i ** (penal -1)
             
             # ヤコビ行列を計算する
             matJ = self.make_J_matrix(ip)
