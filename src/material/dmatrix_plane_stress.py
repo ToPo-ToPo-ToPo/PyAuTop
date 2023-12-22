@@ -16,8 +16,8 @@ class DmatrixPlaneStress:
         tmp = self.young / (1 - self.poisson * self.poisson)
         matD = np.array(
             [
-                [1.0, - self.poisson, 0.0],
-                [- self.poisson, 1.0, 0.0],
+                [1.0, self.poisson, 0.0],
+                [self.poisson, 1.0, 0.0],
                 [0.0, 0.0, 0.5 * (1.0 - self.poisson)]
             ]
         )
