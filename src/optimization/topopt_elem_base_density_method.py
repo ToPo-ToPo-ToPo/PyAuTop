@@ -5,6 +5,8 @@ from scipy.sparse.linalg import spsolve
 from matplotlib import colors
 import matplotlib.pyplot as plt
 import copy
+import shutil
+import os
 from os.path import dirname, abspath
 import sys
 parent_dir = dirname(dirname(abspath(__file__)))
@@ -26,7 +28,7 @@ def main(volfrac, penal, rfil, ft):
     NUM_STEP = "1"
     
     CONV = 0.01 # 収束判定のためのパラメータ
-    MAX_STEP = 20 # トポロジー最適化のループを回す最大回数
+    MAX_STEP = 200 # トポロジー最適化のループを回す最大回数
     
     itr = 0
     min_compliance = 1e20  # コンプライアンス（目的関数）
@@ -40,12 +42,6 @@ def main(volfrac, penal, rfil, ft):
     nx = model.xdiv
     ny = model.ydiv
     
-    # 解析条件の表示
-    print("Minimum compliance problem with OC")
-    print("Design domain shape: " + str(nx) + "x" + str(ny))
-    print("Volume constrain: " + str(volfrac) + ", Filter radius" + str(rfil) + ", SIMP penal: " + str(penal))
-    print("Filter method: " +  ["Sensitivity based", "Density based"][ft])
-    
     # 設計変数の定義
     design_variable = volfrac * np.ones(ny*nx, dtype=float)
     design_variable_old = copy.deepcopy(design_variable)
@@ -53,6 +49,17 @@ def main(volfrac, penal, rfil, ft):
     # 目的関数の感度と体積の感度を用意しておく
     compliance_sensitivity = np.ones(ny*nx)
     volume_sensitivity = np.ones(ny*nx)
+    
+    # 出力結果を格納するフォルダを初期化しておく
+    OUTPUT_PATH = root_dir +  "/output/VTK"
+    shutil.rmtree(OUTPUT_PATH)
+    os.mkdir(OUTPUT_PATH)
+    
+    # 解析条件の表示
+    print("Minimum compliance problem with OC")
+    print("Design domain shape: " + str(nx) + "x" + str(ny))
+    print("Volume constrain: " + str(volfrac) + ", Filter radius" + str(rfil) + ", SIMP penal: " + str(penal))
+    print("Filter method: " +  ["Sensitivity based", "Density based"][ft])
             
     # ループ開始時刻
     start = time.time()
@@ -79,9 +86,9 @@ def main(volfrac, penal, rfil, ft):
         analysis.method.design_variable = design_variable
         
         #---------------------------------------------------------------------
-        # 最適化結果の出力(vkt)もここで行われる
+        # 最適化結果の出力(vkt)を行う
         #---------------------------------------------------------------------
-        Output(analysis.method).output_vtk(root_dir +  "/output/CPS4_test")
+        Output(analysis.method).output_vtk(OUTPUT_PATH + "/CPS4_test_" + str(optstep))
         
         #---------------------------------------------------------------------
         # 目的関数と制約関数の評価
@@ -93,7 +100,7 @@ def main(volfrac, penal, rfil, ft):
         #---------------------------------------------------------------------
         # 感度解析
         # 感度フィルター
-        #---------------------------------------------------------------------   
+        #---------------------------------------------------------------------
         # コンプライアンスの感度解析
         for i in range (len(model.elems)):
             dKe = model.elems[i].make_dK(design_variable[i], penal)
@@ -105,12 +112,12 @@ def main(volfrac, penal, rfil, ft):
         
         #---------------------------------------------------------------------
         # 設計変数の更新（OC法）
-        #--------------------------------------------------------------------- 
+        #---------------------------------------------------------------------
         design_variable = OC(volfrac, design_variable, compliance_sensitivity)
         
         #---------------------------------------------------------------------
         # 収束判定
-        #---------------------------------------------------------------------        
+        #---------------------------------------------------------------------
         # 常にコンプライアンスが小さくなるようにしている
         if min_compliance > compliance:
             min_compliance = compliance
@@ -132,7 +139,7 @@ def main(volfrac, penal, rfil, ft):
 
 #---------------------------------------------------------------------
 # 感度フィルター
-#---------------------------------------------------------------------    
+#---------------------------------------------------------------------
 def sensitivity_filter(nx, ny, rfil, design_variable, compliance_sensitivity):
     
     filtered_c_sens = np.zeros((ny, nx)) # フィルターをかけた目的関数の感度
@@ -164,19 +171,24 @@ def sensitivity_filter(nx, ny, rfil, design_variable, compliance_sensitivity):
 #---------------------------------------------------------------------    
 def OC(volfrac, design_variable, compliance_sensitivity):
     lambda1 = 0
-    lambda2 = 1e4
+    lambda2 = 1e8
     mvlmt = 0.15 # ムーブリミット（設計変数の変動上限）
     eta = 0.5 # ダンピング係数
+    error = 0.1
     # ラグランジュ定数が体積制約を満たすように二分法を用いて探索する
     while (lambda2-lambda1)/(lambda1+lambda2) > 1e-3:
         lambda_mid = (lambda2 + lambda1) * 0.5
         tmp = design_variable * (-1 * compliance_sensitivity / lambda_mid) ** eta
         # 以下の操作では必ず設計変数は0~1の値をとる
-        new_design_variable =np.maximum(np.maximum(np.minimum(np.minimum(tmp, design_variable + mvlmt), 1), design_variable - mvlmt), 0)
+        new_design_variable =np.maximum(np.maximum(np.minimum(np.minimum(tmp, design_variable + mvlmt), 1), design_variable - mvlmt), 1e-8)
+        if np.mean(new_design_variable) - volfrac > error:
+            print(f"vol_error:{np.mean(new_design_variable) - volfrac}")
+            break
         if np.mean(new_design_variable) - volfrac > 0:
             lambda1 = lambda_mid
         else:
             lambda2 = lambda_mid
+    print(f"lambda1:{lambda1}, lambda2:{lambda2}, lambda_mid:{lambda_mid}")
     return new_design_variable
 
 # The real main driver    
@@ -185,7 +197,7 @@ if __name__ == "__main__":
 	# nelx=180
 	# nely=60
 	volfrac=0.4
-	rfil=1
+	rfil=4.0
 	penal=3.0
 	ft=1 # ft==0 -> sens, ft==1 -> dens
 	import sys
