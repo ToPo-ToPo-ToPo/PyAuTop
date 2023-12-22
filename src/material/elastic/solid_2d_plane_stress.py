@@ -27,19 +27,20 @@ class ElasticSolidPlaneStress:
         self.mises = 0.0  # 要素内のミーゼス応力
         self.z_strain = np.zeros(1) # z方向のひずみ
         self.epsilon = 1e-8
-
-        # Dマトリックスを初期化する
-        self.matD = DmatrixPlaneStress(young, poisson).make_De_matrix()
         
         # C0マトリックス（Dマトリックスのヤング率に依存しないところ）を作成する
-        self.matC0 = DmatrixPlaneStress(young, poisson).make_C0_matrix()
+        self.matC0 = DmatrixPlaneStress(self.young_list[-1], self.poisson).make_C0_matrix()
     
+        # Dマトリックスを初期化する
+        self.matD = self.young_list[-1] * self.matC0
+        
     #---------------------------------------------------------------------
     # 材料物性を更新する
     #---------------------------------------------------------------------
     def update_parameter(self, design_density):
         self.young_list[-1] = (self.young_list[0] - self.epsilon) * design_density**3.0 + self.epsilon
         self.density_list[-1] = self.density_list[0] * design_density
+        self.matD = self.young_list[-1] * self.matC0
                 
     #---------------------------------------------------------------------
     # 応力を更新する
