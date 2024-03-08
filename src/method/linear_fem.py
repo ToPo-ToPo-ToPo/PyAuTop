@@ -2,6 +2,7 @@
 import numpy as np
 import numpy.linalg as LA
 import jax
+from jax import jit
 import jax.numpy as jnp
 from scipy.sparse.linalg import spsolve
 from scipy.sparse import csr_matrix
@@ -66,9 +67,6 @@ class LinearFEM(FEMBase):
 
             # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
             lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
-
-            # 疎行列に変換する
-            #lhs_c = (x[1] + 2.0 * x[3]) * lhs_c
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
             solution = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)

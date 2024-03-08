@@ -56,8 +56,8 @@ class FEMBase(FEMInterface):
                     rt = elem.dof_list[r]
                     
                     # アセンブリング
+                    # jaxを使用する際の配列の更新方法
                     K = K.at[(ct, rt)].add(Ke[c, r])
-                    #K[ct, rt] += Ke[c, r]
 
         return K
     

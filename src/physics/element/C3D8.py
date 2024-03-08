@@ -27,11 +27,11 @@ class C3D8(ElementBase):
         self.w1 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 積分点の重み係数1
         self.w2 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 積分点の重み係数2
         self.w3 = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 積分点の重み係数3
-        self.ai = np.array([-np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),     # 積分点の座標(a,b,c座標系, np.array型のリスト)
+        self.ai = jnp.array([-np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),     # 積分点の座標(a,b,c座標系, np.array型のリスト)
                             -np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0)])
-        self.bi = np.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0),     # 積分点の座標(a,b,c座標系, np.array型のリスト)
+        self.bi = jnp.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0),     # 積分点の座標(a,b,c座標系, np.array型のリスト)
                             -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0)])
-        self.ci = np.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),   # 積分点の座標(a,b,c座標系, np.array型のリスト)
+        self.ci = jnp.array([-np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0), -np.sqrt(1.0 / 3.0),   # 積分点の座標(a,b,c座標系, np.array型のリスト)
                             np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0), np.sqrt(1.0 / 3.0)])
         
         # 要素内節点の自由度数を更新する
@@ -39,7 +39,7 @@ class C3D8(ElementBase):
             self.nodes[inode].num_dof = self.num_dof_at_node
 
         # 要素内の変位を初期化する
-        self.solution = np.zeros(self.num_node * self.num_dof_at_node)
+        self.solution = jnp.zeros(self.num_node * self.num_dof_at_node)
         
         # 要素内の自由度番号のリストを作成する
         self.dof_list = self.make_dof_list(nodes, self.num_node, self.num_dof_at_node)
@@ -54,7 +54,7 @@ class C3D8(ElementBase):
     def make_K(self):
 
         # 初期化
-        Ke = np.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
+        Ke = jnp.zeros([self.num_dof_at_node * self.num_node, self.num_dof_at_node * self.num_node])
 
         # 積分点ループ
         for ip in range(self.ipNum):
@@ -79,7 +79,7 @@ class C3D8(ElementBase):
     def make_Fint(self):
 
         # 初期化
-        Fint_e = np.zeros(self.num_dof_at_node * self.num_node)
+        Fint_e = jnp.zeros(self.num_dof_at_node * self.num_node)
 
         # 積分点ループ
         for ip in range(self.ipNum):
@@ -101,7 +101,7 @@ class C3D8(ElementBase):
     def make_Fb(self):
 
         # 初期化
-        Fb = np.zeros(self.num_node * self.num_dof_at_node)
+        Fb = jnp.zeros(self.num_node * self.num_dof_at_node)
 
         # 積分点ループ
         '''for ip in range(self.ipNum):
@@ -150,7 +150,7 @@ class C3D8(ElementBase):
         matJ = matdNdabc @ matxiyizi
 
         # ヤコビアンが負にならないかチェックする
-        if jnp.linalg.det(matJ) < 0:
+        if JLA.det(matJ) < 0:
             raise ValueError("要素の計算に失敗しました")
 
         return matJ
@@ -240,6 +240,7 @@ class C3D8(ElementBase):
     # 構成則の計算を行う
     # elem_solution : 要素節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
+    @jit
     def compute_constitutive_law(self, elem_solution):
         
         # 要素内変位の更新
@@ -257,6 +258,7 @@ class C3D8(ElementBase):
     #---------------------------------------------------------------------
     # 構成則の変数を更新する
     #---------------------------------------------------------------------
+    @jit
     def update_constitutive_law(self):
 
         # 積分点ループ
