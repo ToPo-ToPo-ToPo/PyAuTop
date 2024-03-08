@@ -1,6 +1,8 @@
 
 import numpy as np
 import numpy.linalg as LA
+import jax
+import jax.numpy as jnp
 from scipy.sparse.linalg import spsolve
 from scipy.sparse import csr_matrix
 from src.method.fem_base import FEMBase
@@ -25,6 +27,61 @@ class LinearFEM(FEMBase):
 
         # 総自由度数を計算する
         self.compute_num_total_equation()
+        
+    #---------------------------------------------------------------------
+    # 解析を行う
+    #---------------------------------------------------------------------
+    def run2(self, rho):
+        # 定義
+        self.solution_list = []  # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.Freact_list = []    # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
+
+        # 荷重をインクリメント毎に分割する
+        Fext_list = []
+        for istep in range(self.num_step):
+            Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
+
+        # 変位ベクトルと残差ベクトルの定義
+        solution = jnp.zeros(self.num_total_equation)   # 全節点の変位ベクトル
+
+        # 境界条件を考慮しないKマトリクスを作成する
+        K = self.make_K()
+
+        # 増分解析ループ
+        for istep in range(self.num_step):
+            
+            # 計算中の情報を出力
+            print('')
+            print('============================================================')
+            print(' Incremental step' + str(istep+1))
+            print('------------------------------------------------------------')
+            print(' ||Fext||                ||u||                              ')
+            print('------------------------------------------------------------')
+
+            # i+1番インクリメントの荷重を設定する
+            Fext = Fext_list[istep]
+
+            # dirichlet境界の規定値を設定する
+            solution_bar = self.bound.make_disp_vector()
+
+            # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
+            lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
+
+            # 疎行列に変換する
+            #lhs_c = (rho[1] * 2.0 * rho[3]) * csr_matrix(lhs_c)
+            lhs_c = (rho[1] + 2.0 * rho[3]) * lhs_c
+
+            # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
+            #solution = spsolve(lhs_c, rhs_c, use_umfpack=True)
+            solution = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)
+            self.solution_list.append(solution.copy())
+
+            # 節点反力を計算し、インクリメントの最終的な節点反力を格納する
+            Freact = jnp.array(K @ solution - Fext).flatten()
+            self.Freact_list.append(Freact)
+
+            # 計算中の情報を出力
+            #print('{:.4e}'.format(jnp.linalg.norm(Fext)) + '      ' + '{:.4e}'.format(jnp.linalg.norm(solution)) + '      ')
 
     #---------------------------------------------------------------------
     # 解析を行う

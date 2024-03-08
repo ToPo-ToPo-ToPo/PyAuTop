@@ -134,7 +134,8 @@ class FEMBase(FEMInterface):
 
         for i in range(len(solution_bar)):
             if not solution_bar[i] == None:
-                rhs_c[i] = solution_bar[i] - solution[i]
+                #rhs_c[i] = solution_bar[i] - solution[i]
+                rhs_c = rhs_c.at[i].set(solution_bar[i] - solution[i])
 
         return lhs_c, rhs_c
     

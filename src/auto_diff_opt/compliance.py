@@ -51,8 +51,7 @@ optimizationParams = {'maxIters':200,'minIters':100,'relTol':0.05}
 projection = {'isOn':False, 'beta':4, 'c0':0.5}
 
 class ComplianceMinimizer:
-    def __init__(self, mesh, bc, material, \
-                 globalvolCons, projection):
+    def __init__(self, mesh, bc, material, globalvolCons, projection):
         self.mesh = mesh
         self.material = material
         self.bc = bc
@@ -145,6 +144,5 @@ class ComplianceMinimizer:
         optimize(self.mesh, optimizationParams, ft, \
              self.objectiveHandle, self.consHandle, self.numConstraints)
         
-Opt = ComplianceMinimizer(mesh, bc, material, \
-                globalVolumeConstraint, projection)
+Opt = ComplianceMinimizer(mesh, bc, material, globalVolumeConstraint, projection)
 Opt.TO(optimizationParams, ft)
