@@ -68,20 +68,15 @@ class LinearFEM(FEMBase):
             lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
 
             # 疎行列に変換する
-            #lhs_c = (rho[1] * 2.0 * rho[3]) * csr_matrix(lhs_c)
             lhs_c = (rho[1] + 2.0 * rho[3]) * lhs_c
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
-            #solution = spsolve(lhs_c, rhs_c, use_umfpack=True)
             solution = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)
             self.solution_list.append(solution.copy())
 
             # 節点反力を計算し、インクリメントの最終的な節点反力を格納する
             Freact = jnp.array(K @ solution - Fext).flatten()
             self.Freact_list.append(Freact)
-
-            # 計算中の情報を出力
-            #print('{:.4e}'.format(jnp.linalg.norm(Fext)) + '      ' + '{:.4e}'.format(jnp.linalg.norm(solution)) + '      ')
 
     #---------------------------------------------------------------------
     # 解析を行う
