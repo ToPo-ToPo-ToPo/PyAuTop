@@ -5,8 +5,11 @@ import jax
 import jax.numpy as jnp
 from jax import jit, value_and_grad
 import time
-from utilfuncs import Mesher, computeLocalElements, computeFilter
-from mmaOptimize import optimize
+
+# fem model
+from models.utilfuncs import Mesher, computeLocalElements, computeFilter
+from models.mmaOptimize import optimize
+
 import matplotlib.pyplot as plt
 
 nelx, nely = 60, 30
@@ -108,10 +111,12 @@ class ComplianceMinimizer:
         @jit
         # Code snippet 2.4
         def solveKuf(K): 
-            u_free = jax.scipy.linalg.solve\
-                    (K[self.bc['free'],:][:,self.bc['free']], \
-                    self.bc['force'][self.bc['free']], \
-                     sym_pos = True, check_finite=False)
+            u_free = jax.scipy.linalg.solve(
+                K[self.bc['free'],:][:,self.bc['free']], 
+                self.bc['force'][self.bc['free']],
+                #sym_pos = True, 
+                check_finite=False
+            )
             u = jnp.zeros((self.mesh['ndof']))
             u = u.at[self.bc['free']].set(u_free.reshape(-1)) #UPDATED
             return u

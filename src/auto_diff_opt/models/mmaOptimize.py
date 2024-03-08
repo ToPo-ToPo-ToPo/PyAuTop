@@ -2,7 +2,7 @@ import numpy as np
 import jax.numpy as jnp
 import time
 import matplotlib.pyplot as plt
-from utilfuncs import  MMA,applySensitivityFilter
+from .utilfuncs import MMA, applySensitivityFilter
 
 
 def optimize(mesh, optimizationParams, ft, \
