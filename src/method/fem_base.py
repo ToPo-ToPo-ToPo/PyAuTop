@@ -3,7 +3,8 @@ import abc
 import numpy as np
 import numpy.linalg as LA
 from concurrent import futures
-
+import jax
+import jax.numpy as jnp
 #=============================================================================
 # 有限要素法の基本クラス
 # インターフェースの機能を持ち、具体的な実装は継承先にて行う
@@ -35,7 +36,7 @@ class FEMBase(FEMInterface):
     def make_K(self):
 
         # 初期化
-        K = np.matrix(np.zeros((self.num_total_equation, self.num_total_equation)))
+        K = jnp.array(jnp.zeros((self.num_total_equation, self.num_total_equation)))
         
         # 全要素ループ
         for elem in self.elements:
@@ -55,7 +56,8 @@ class FEMBase(FEMInterface):
                     rt = elem.dof_list[r]
                     
                     # アセンブリング
-                    K[ct, rt] += Ke[c, r]
+                    K = K.at[(ct, rt)].add(Ke[c, r])
+                    #K[ct, rt] += Ke[c, r]
 
         return K
     
@@ -65,7 +67,7 @@ class FEMBase(FEMInterface):
     def make_Fint(self):
 
         # 初期化
-        Fint = np.zeros(self.num_total_equation)
+        Fint = jnp.zeros(self.num_total_equation)
         
         # 全要素ループ
         for elem in self.elements:
@@ -114,23 +116,26 @@ class FEMBase(FEMInterface):
     def set_bound_condition(self, lhs, rhs, solution_bar, solution):
 
         # 初期化
-        lhs_c = np.copy(lhs)
-        rhs_c = np.copy(rhs)
+        lhs_c = jnp.copy(lhs)
+        rhs_c = jnp.copy(rhs)
 
         # 単点拘束条件を考慮したKマトリクス、荷重ベクトルを作成する
         for i in range(len(solution_bar)):
             if not solution_bar[i] == None:
                 
                 # Kマトリクスからi列を抽出する
-                vecx = np.array(lhs_c[:, i]).flatten()
+                vecx = jnp.array(lhs_c[:, i]).flatten()
 
                 # 変位ベクトルi列の影響を荷重ベクトルに適用する
                 rhs_c = rhs_c - (solution_bar[i] - solution[i]) * vecx
 
                 # Kマトリクスのi行、i列を全て0にし、i行i列の値を1にする
-                lhs_c[:, i] = 0.0
-                lhs_c[i, :] = 0.0
-                lhs_c[i, i] = 1.0
+                #lhs_c[:, i] = 0.0
+                #lhs_c[i, :] = 0.0
+                #lhs_c[i, i] = 1.0
+                lhs_c = lhs_c.at[:, i].set(0.0)
+                lhs_c = lhs_c.at[i, :].set(0.0)
+                lhs_c = lhs_c.at[i, i].set(1.0)
 
         for i in range(len(solution_bar)):
             if not solution_bar[i] == None:

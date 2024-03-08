@@ -39,7 +39,7 @@ class ElastoPlasticVonMisesSolid:
         self.prevEPStrain = 0.0                      # 要素内の相当塑性ひずみ
 
         # Dマトリックスを初期化する
-        self.matD = Dmatrix(young, poisson).make_De_matrix()
+        #self.matD = Dmatrix(young, poisson).make_De_matrix()
 
     #---------------------------------------------------------------------
     # Return Mapping法により、応力、塑性ひずみ、降伏判定を更新する

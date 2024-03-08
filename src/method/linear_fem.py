@@ -31,7 +31,7 @@ class LinearFEM(FEMBase):
     #---------------------------------------------------------------------
     # 解析を行う
     #---------------------------------------------------------------------
-    def run2(self, rho):
+    def run2(self, x):
         # 定義
         self.solution_list = []  # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
         self.Freact_list = []    # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
@@ -68,7 +68,7 @@ class LinearFEM(FEMBase):
             lhs_c, rhs_c = self.set_bound_condition(K, Fext, solution_bar, solution)
 
             # 疎行列に変換する
-            lhs_c = (rho[1] + 2.0 * rho[3]) * lhs_c
+            #lhs_c = (x[1] + 2.0 * x[3]) * lhs_c
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
             solution = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)

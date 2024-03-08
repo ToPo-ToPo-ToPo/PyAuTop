@@ -3,7 +3,8 @@
 import numpy as np
 import numpy.linalg as LA
 from src.material.dmatrix import Dmatrix
-
+import jax
+import jax.numpy as jnp
 #=============================================================================
 # 3次元ソリッド要素に対する等方性弾生体モデルの構成則を計算するためのクラス
 #=============================================================================
@@ -25,7 +26,7 @@ class ElasticSolid:
         self.mises = 0.0                             # 要素内のミーゼス応力
 
         # Dマトリックスを初期化する
-        self.matD = Dmatrix(young, poisson).make_De_matrix()
+        #self.matD = Dmatrix(young, poisson).make_De_matrix()
 
     #---------------------------------------------------------------------
     # 応力を更新する
@@ -35,9 +36,12 @@ class ElasticSolid:
         
         # 全ひずみを求める
         vecStrain = matB @ solution 
+        
+        #
+        matD = self.make_De_matrix()
 
         # 応力を求める
-        self.vecStress = self.matD @ vecStrain
+        self.vecStress = matD @ vecStrain
         
         # mises応力を求める
         self.mises = self.mises_stress(self.vecStress)
@@ -47,6 +51,23 @@ class ElasticSolid:
     #---------------------------------------------------------------------
     def update(self):
         pass
+    
+    #---------------------------------------------------------------------
+    # 弾性状態のDマトリクスを作成する
+    #---------------------------------------------------------------------
+    def make_De_matrix(self):
+        young = self.young
+        poisson = self.poisson
+        tmp = young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))
+        matD = np.array([[1.0 - poisson, poisson, poisson, 0.0, 0.0, 0.0],
+                         [poisson, 1.0 - poisson, poisson, 0.0, 0.0, 0.0],
+                         [poisson, poisson, 1.0 - poisson, 0.0, 0.0, 0.0],
+                         [0.0, 0.0, 0.0, 0.5 * (1.0 - 2.0 * poisson), 0.0, 0.0],
+                         [0.0, 0.0, 0.0, 0.0, 0.5 * (1.0 - 2.0 * poisson), 0.0],
+                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.5 * (1.0 - 2.0 * poisson)]])
+        matD = tmp * matD
+
+        return matD
 
     #---------------------------------------------------------------------
     # ミーゼス応力を計算する
@@ -54,8 +75,8 @@ class ElasticSolid:
     #---------------------------------------------------------------------
     def mises_stress(self, vecStress):
 
-        tmp1 = np.square(vecStress[0] - vecStress[1]) + np.square(vecStress[1] - vecStress[2]) + np.square(vecStress[2] - vecStress[0])
-        tmp2 = 6.0 * (np.square(vecStress[3]) + np.square(vecStress[4]) + np.square(vecStress[5]))
-        mises = np.sqrt(0.5 * (tmp1 + tmp2))
+        tmp1 = jnp.square(vecStress[0] - vecStress[1]) + jnp.square(vecStress[1] - vecStress[2]) + jnp.square(vecStress[2] - vecStress[0])
+        tmp2 = 6.0 * (np.jsquare(vecStress[3]) + jnp.square(vecStress[4]) + jnp.square(vecStress[5]))
+        mises = jnp.sqrt(0.5 * (tmp1 + tmp2))
 
         return mises

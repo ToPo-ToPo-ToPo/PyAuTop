@@ -2,6 +2,9 @@
 import copy
 import numpy as np
 import numpy.linalg as LA
+from jax import jit
+import jax.numpy as jnp
+import jax.numpy.linalg as JLA
 from src.physics.element.element_base import ElementBase 
 #=============================================================================
 # 6面体8節点要素のクラス
@@ -61,9 +64,12 @@ class C3D8(ElementBase):
 
             # Bbarマトリクスを計算する
             matB = self.make_B_matrix(ip)
+            
+            #
+            matD = self.material[ip].make_De_matrix()
 
             # 要素剛性行列Keを計算する
-            Ke += self.w1[ip] * self.w2[ip] * self.w3[ip] * matB.T @ self.material[ip].matD @ matB * LA.det(matJ)
+            Ke += self.w1[ip] * self.w2[ip] * self.w3[ip] * matB.T @ matD @ matB * JLA.det(matJ)
 
         return Ke
     
@@ -85,7 +91,7 @@ class C3D8(ElementBase):
             matB = self.make_B_matrix(ip)
 
             # 内力ベクトルを計算する
-            Fint_e += self.w1[ip] * self.w2[ip] * self.w3[ip] * matB.T @ self.material[ip].vecStress * LA.det(matJ)
+            Fint_e += self.w1[ip] * self.w2[ip] * self.w3[ip] * matB.T @ self.material[ip].vecStress * JLA.det(matJ)
 
         return Fint_e
     
@@ -131,7 +137,7 @@ class C3D8(ElementBase):
         matdNdabc = self.make_dNda(ip)
 
         # xi, yi, ziの行列を計算する
-        matxiyizi = np.array([[self.nodes[0].x, self.nodes[0].y, self.nodes[0].z],
+        matxiyizi = jnp.array([[self.nodes[0].x, self.nodes[0].y, self.nodes[0].z],
                               [self.nodes[1].x, self.nodes[1].y, self.nodes[1].z],
                               [self.nodes[2].x, self.nodes[2].y, self.nodes[2].z],
                               [self.nodes[3].x, self.nodes[3].y, self.nodes[3].z],
@@ -144,7 +150,7 @@ class C3D8(ElementBase):
         matJ = matdNdabc @ matxiyizi
 
         # ヤコビアンが負にならないかチェックする
-        if LA.det(matJ) < 0:
+        if jnp.linalg.det(matJ) < 0:
             raise ValueError("要素の計算に失敗しました")
 
         return matJ
@@ -169,18 +175,18 @@ class C3D8(ElementBase):
         matJ = self.make_J_matrix(ip)
 
         # matdNdxyz = matJinv * matdNdabc
-        matdNdxyz = LA.solve(matJ, dNda)
+        matdNdxyz = JLA.solve(matJ, dNda)
 
         # Bマトリクスを計算する
-        matB = np.empty((6,0))
+        matB = jnp.empty((6,0))
         for i in range(self.num_node): 
-            matTmp = np.array([[matdNdxyz[0, i], 0.0, 0.0],
+            matTmp = jnp.array([[matdNdxyz[0, i], 0.0, 0.0],
                                [0.0, matdNdxyz[1, i], 0.0],
                                [0.0, 0.0, matdNdxyz[2, i]],
                                [0.0, matdNdxyz[2, i], matdNdxyz[1, i]],
                                [matdNdxyz[2, i], 0.0, matdNdxyz[0, i]], 
                                [matdNdxyz[1, i], matdNdxyz[0, i], 0.0]]) 
-            matB = np.hstack((matB, matTmp))
+            matB = jnp.hstack((matB, matTmp))
 
         return matB
 
@@ -224,7 +230,7 @@ class C3D8(ElementBase):
         dN8dc = 0.125 * (1.0 - a) * (1.0 + b)
 
         # dNdaを計算する
-        dNda = np.array([[dN1da, dN2da, dN3da, dN4da, dN5da, dN6da, dN7da, dN8da],
+        dNda = jnp.array([[dN1da, dN2da, dN3da, dN4da, dN5da, dN6da, dN7da, dN8da],
                          [dN1db, dN2db, dN3db, dN4db, dN5db, dN6db, dN7db, dN8db],
                          [dN1dc, dN2dc, dN3dc, dN4dc, dN5dc, dN6dc, dN7dc, dN8dc]])
 
