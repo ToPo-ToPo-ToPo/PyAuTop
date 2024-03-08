@@ -1,6 +1,7 @@
 #https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
 
 import numpy as np
+from jax import jit
 
 # 境界条件を格納するクラス
 class Boundary:

@@ -60,5 +60,5 @@ compliance = Compliance(1, physics=physics, method=method)
 df = grad(compliance.compute)  # 勾配関数を取得
 
 # 感度を計算
-s = np.ones(len(method.elements))
+s = jnp.ones(len(method.elements))
 print(df(s)) 

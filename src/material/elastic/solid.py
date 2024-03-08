@@ -58,11 +58,12 @@ class ElasticSolid:
     #---------------------------------------------------------------------
     # 弾性状態のDマトリクスを作成する
     #---------------------------------------------------------------------
+    @jit
     def make_De_matrix(self):
         young = self.young
         poisson = self.poisson
         tmp = young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))
-        matD = np.array([[1.0 - poisson, poisson, poisson, 0.0, 0.0, 0.0],
+        matD = jnp.array([[1.0 - poisson, poisson, poisson, 0.0, 0.0, 0.0],
                          [poisson, 1.0 - poisson, poisson, 0.0, 0.0, 0.0],
                          [poisson, poisson, 1.0 - poisson, 0.0, 0.0, 0.0],
                          [0.0, 0.0, 0.0, 0.5 * (1.0 - 2.0 * poisson), 0.0, 0.0],

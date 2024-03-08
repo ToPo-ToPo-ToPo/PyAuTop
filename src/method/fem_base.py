@@ -3,7 +3,7 @@ import abc
 import numpy as np
 import numpy.linalg as LA
 from concurrent import futures
-import jax
+from jax import jit
 import jax.numpy as jnp
 #=============================================================================
 # 有限要素法の基本クラス
@@ -33,6 +33,7 @@ class FEMBase(FEMInterface):
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
     #---------------------------------------------------------------------
+    @jit
     def make_K(self):
 
         # 初期化
@@ -64,6 +65,7 @@ class FEMBase(FEMInterface):
     #---------------------------------------------------------------------
     # 内力ベクトルFintを作成する
     #---------------------------------------------------------------------
+    @jit
     def make_Fint(self):
 
         # 初期化
@@ -89,7 +91,7 @@ class FEMBase(FEMInterface):
         Ft = self.bound.make_Ft()
 
         # 等価節点力の荷重ベクトルを作成する
-        Fb = np.zeros(self.num_total_equation)
+        Fb = jnp.zeros(self.num_total_equation)
         
         # 全要素ループ
         for elem in self.elements:
@@ -99,7 +101,7 @@ class FEMBase(FEMInterface):
             
             # アセンブリング
             for i in range(len(elem.dof_list)):
-                Fb[elem.dof_list[i]] += Fb[i]
+                Fb = Fb.at[elem.dof_list[i]].add(Fb[i])
 
         # 境界条件、等価節点力の荷重ベクトルを足し合わせる
         Fext = Ft + Fb
@@ -130,16 +132,12 @@ class FEMBase(FEMInterface):
                 rhs_c = rhs_c - (solution_bar[i] - solution[i]) * vecx
 
                 # Kマトリクスのi行、i列を全て0にし、i行i列の値を1にする
-                #lhs_c[:, i] = 0.0
-                #lhs_c[i, :] = 0.0
-                #lhs_c[i, i] = 1.0
                 lhs_c = lhs_c.at[:, i].set(0.0)
                 lhs_c = lhs_c.at[i, :].set(0.0)
                 lhs_c = lhs_c.at[i, i].set(1.0)
 
         for i in range(len(solution_bar)):
             if not solution_bar[i] == None:
-                #rhs_c[i] = solution_bar[i] - solution[i]
                 rhs_c = rhs_c.at[i].set(solution_bar[i] - solution[i])
 
         return lhs_c, rhs_c
@@ -148,13 +146,14 @@ class FEMBase(FEMInterface):
     # 全ての要素内の変数を更新する
     # solution : 全節点の変位ベクトル(np.array型)
     #---------------------------------------------------------------------
+    @jit
     def update_element_data(self, solution):
 
         # 全要素ループ
         for elem in self.elements:
             
             # 要素状態場の初期化
-            elem_solution = np.zeros(elem.num_node * elem.num_dof_at_node)
+            elem_solution = jnp.zeros(elem.num_node * elem.num_dof_at_node)
             
             # 要素の状態場を更新する
             for i in range(len(elem.dof_list)):
@@ -166,6 +165,7 @@ class FEMBase(FEMInterface):
     #---------------------------------------------------------------------
     # 全ての要素内の変数を更新する
     #---------------------------------------------------------------------
+    @jit
     def update_constitutive_low(self):
 
         # 全要素ループ

@@ -40,7 +40,8 @@ class LinearFEM(FEMBase):
         # 荷重をインクリメント毎に分割する
         Fext_list = []
         for istep in range(self.num_step):
-            Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
+            Fext = self.make_Fext()
+            Fext_list.append(Fext * (istep + 1) / self.num_step)
 
         # 変位ベクトルと残差ベクトルの定義
         solution = jnp.zeros(self.num_total_equation)   # 全節点の変位ベクトル
@@ -88,7 +89,8 @@ class LinearFEM(FEMBase):
         # 荷重をインクリメント毎に分割する
         Fext_list = []
         for istep in range(self.num_step):
-            Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
+            Fext = self.make_Fext()
+            Fext_list.append(Fext() * (istep + 1) / self.num_step)
 
         # 変位ベクトルと残差ベクトルの定義
         solution = np.zeros(self.num_total_equation)   # 全節点の変位ベクトル
