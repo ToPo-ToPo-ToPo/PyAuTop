@@ -60,8 +60,7 @@ class C3D8:
         
         for i in range(num_node):
             for j in range(num_dof):
-                # jaxを使用する際の配列の更新方法
-                #dof_list[i * num_dof + j] = nodes[i].dof(j)
+                # jaxを使用する際の配列の更新方法 (dof_list[i * num_dof + j] = nodes[i].dof(j))
                 dof_list = dof_list.at[i * num_dof + j].set(self.nodes[i].dof(j))
         
         return dof_list
