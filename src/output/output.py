@@ -1,184 +1,25 @@
-import platform
-pf = platform.system()
-vt = platform.mac_ver()
-if pf == 'Windows' or pf == 'Linux' or vt[2] == 'x86_64':
-    import pypardiso
+# kato
+import os
 import numpy as np
-import numpy.linalg as LA
-from scipy.sparse.linalg import spsolve
-from scipy.sparse import csr_matrix
-from src.method.fem_base import FEMBase
-#=============================================================================
-#
-#=============================================================================
-class NonlinearFEM(FEMBase):
+
+#---------------------------------------------------------------------
+# 解析結果をvtkファイルに出力するクラス
+# kato(20231129)
+#---------------------------------------------------------------------
+class Output:
     # コンストラクタ
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
-    # elements : 要素は種類ごとにソートされている前提(C3D８型のリスト)
+    # elements : 要素は種類ごとにソートされている前提(CPS4型のリスト)
     # bound    : 境界条件(d2Boundary型)
     # num_step   : インクリメント数
-    def __init__(self, nodes, elements, bound, num_step):
-
-        # インスタンス変数を定義する
-        self.nodes = nodes                 # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
-        self.elements = elements           # 要素は種類ごとにソートされている前提(リスト)
-        self.bound = bound                 # 境界条件(d2Boundary型)
-        self.design_variable = []          # 設計変数（結果格納用）
-        
-        self.num_step = num_step           # インクリメント数
-        self.itr_max = 20                  # ニュートン法のイテレータの上限
-        
-        self.rn = 1.0e-07                  # ニュートン法の残差力の収束判定のパラメータ
-        self.cn = 1.0e-06                  # ニュートン法の変位の収束判定のパラメータ
-
-        # 総自由度数を計算する
-        self.compute_num_total_equation()
-        
-    #---------------------------------------------------------------------
-    # 陰解法で解析を行う
-    #---------------------------------------------------------------------
-    def run(self):
-
-        self.solution_list = []   # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
-        self.Freact_list = []     # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
-
-        # 荷重をインクリメント毎に分割する
-        Fext_list = []
-        for istep in range(self.num_step):
-            Fext_list.append(self.make_Fext() * (istep + 1) / self.num_step)
-        
-        # Dirichiret境界の規定値をインクリメント毎に分割する
-        solution_bar_list = []
-        for istep in range(self.num_step):
-
-            # 初期化
-            solution_bar_tmp = self.bound.make_disp_vector().copy()
-
-            # 境界条件を設定した節点のみを対象にする
-            for i in range(len(solution_bar_tmp)):
-                if not solution_bar_tmp[i] == None:
-                    solution_bar_tmp[i] *= (istep + 1) / self.num_step
-            
-            # 保存
-            solution_bar_list.append(solution_bar_tmp.copy())
-
-
-        # 変位ベクトルと残差ベクトルの定義
-        solution = np.zeros(self.num_total_equation)   # 全節点の変位ベクトル
-        R = np.zeros(self.num_total_equation)          # 残差力ベクトル
-        
-        # 増分解析ループ
-        for istep in range(self.num_step):
-
-            # 計算中の情報を出力
-            print('')
-            print('============================================================')
-            print(' Incremental step: ' + str(istep+1))
-            print('')
-            print('------------------------------------------------------------')
-            print(' Iter     ||R0||         ||R/R0||       ||δu/Δu||           ')
-            print('------------------------------------------------------------')
-
-            # 初期化
-            solution_first = solution.copy()                   # 初期の全節点の変位ベクトル
-            Fext = Fext_list[istep]                            # istep番インクリメントの荷重
-            solution_bar = solution_bar_list[istep]            # istep番目のdirichlet境界の規定値
-
-            # 接線剛性マトリクスKtを作成する
-            self.Kt = self.make_K()
-
-            # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
-            if istep == 0:
-                R = Fext_list[0]
-            else:
-                R = Fext_list[istep] - Fext_list[istep - 1]
-
-            # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-            Ktc, Rc = self.set_bound_condition(self.Kt, R, solution_bar, solution)
-
-            # 初期の残差ノルムを計算する
-            residual0 = LA.norm(Rc)
-
-            # ニュートン法による収束演算を行う
-            for iter in range(self.itr_max + 1):
-
-                # 疎行列に変換する
-                Ktc = csr_matrix(Ktc)
-
-                # 変位増分Δuを計算
-                if pf == 'Windows' or pf == 'Linux' or vt[2] == 'x86_64':
-                    delta_solution = pypardiso.spsolve(Ktc, Rc)
-                else:
-                    delta_solution = spsolve(Ktc, Rc, use_umfpack=True)
-
-                # 変位ベクトルの更新: u_new = u_old + Δu
-                solution += delta_solution
-
-                # 全ての要素内の変数を更新する
-                self.update_element_data(solution)
-
-                # 新たな接線剛性マトリクスKtを作成する
-                self.Kt = self.make_K()
-
-                # 新たな残差力ベクトルRを求める
-                Fint = self.make_Fint()
-                R = Fext - Fint
-
-                # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                Ktc, Rc = self.set_bound_condition(self.Kt, R, solution_bar, solution)
-
-                # 収束判定に必要な変数を計算する
-                check_flag, solution_rate, residual_rate = self.check_convergence(Fint, Rc, solution, solution_first, delta_solution)
-
-                # 計算中の情報を出力
-                print(' ' + str(iter+1) + '      ' 
-                      + '{:.4e}'.format(residual0) + '      ' 
-                      + '{:.4e}'.format(residual_rate) + '      ' 
-                      + '{:.4e}'.format(solution_rate))
-
-                # 収束判定を行う
-                if check_flag == True:
-                    break
-                if iter + 1 >= self.itr_max:
-                     raise ValueError("ニュートンラプソン法が収束しませんでした。")
-
-            # 構成則の情報の更新
-            self.update_constitutive_low()
-
-            # インクリメントの最終的な変位べクトルを格納する
-            self.solution_list.append(solution.copy())
-
-            # 節点反力を計算する
-            # つり合っている場合、FintとFextの違いは反力のみとなる
-            Fint = self.make_Fint()
-            Rreact = np.array(Fint - Fext).flatten()
-
-            # インクリメントの最終的な節点反力を格納する
-            self.Freact_list.append(Rreact)      
-
-    #---------------------------------------------------------------------
-    # ニュートンラプソン法の収束判定を行う
-    #---------------------------------------------------------------------
-    def check_convergence(self, Fint, Rc, solution, solution_first, delta_solution):
-        
-        # 初期化
-        check_flag = False
-
-        # 残差ベクトルの全成分または変位増分がゼロの場合、収束とする
-        if LA.norm(delta_solution) < self.cn * 1.0e-03 and LA.norm(Rc) < self.rn * 1.0e-03:
-            check_flag = True
-
-        # 増分変位における相対誤差を計算する
-        solution_rate = LA.norm(delta_solution) / LA.norm(solution - solution_first)
-        
-        # 残差ベクトルにおける相対誤差を計算する
-        residual_rate = LA.norm(Rc) / LA.norm(Fint)
-
-        # 増分変位と残差ベクトルが閾値以下であれば、収束とする
-        if solution_rate < self.cn and residual_rate < self.rn:
-            check_flag = True
-        
-        return check_flag, solution_rate, residual_rate
+    def __init__(self, method):
+                # インスタンス変数を定義する
+        self.nodes = method.nodes                  # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
+        self.elements = method.elements            # 要素は種類ごとにソートされている前提(リスト)
+        self.num_step = method.num_step
+        self.solution_list = method.solution_list  # インクリメント毎の変位ベクトルのリスト(np.array型のリスト)
+        self.Freact_list = method.Freact_list      # インクリメント毎の反力ベクトルのリスト(np.array型のリスト)
+        self.design_variable = method.design_variable  # 設計変数（np.array型のリスト）
 
     #---------------------------------------------------------------------
     # 解析結果をテキストファイルに出力する
@@ -367,8 +208,8 @@ class NonlinearFEM(FEMBase):
 
             # 塑性ひずみデータを出力する
             f.write("***** Plastic Strain Data ******\n")
-            f.write("Element No".rjust(columNum) + "Integral No".rjust(columNum) + "PStrain XX".rjust(columNum) + "PStrain YY".rjust(columNum) + 
-                    "PStrain ZZ".rjust(columNum) + "PStrain XY".rjust(columNum) + "PStrain XZ".rjust(columNum) + "PStrain YZ".rjust(columNum) + 
+            f.write("Element No".rjust(columNum) + "Integral No".rjust(columNum) + "PStrain XX".rjust(columNum) + "PStrain YY".rjust(columNum) +
+                    "PStrain ZZ".rjust(columNum) + "PStrain XY".rjust(columNum) + "PStrain XZ".rjust(columNum) + "PStrain YZ".rjust(columNum) +
                     "Equivalent Plastic Strain".rjust(30) + "\n")
             f.write("-" * (columNum * 8 + 30) + "\n")
             for elemOutputData in self.elem_output_data_list[i]:
@@ -381,15 +222,15 @@ class NonlinearFEM(FEMBase):
                     strPStrainZZ = str(format(elemOutputData.vecIpPStrainList[j][2], floatDigits).rjust(columNum))
                     strPStrainXY = str(format(elemOutputData.vecIpPStrainList[j][5], floatDigits).rjust(columNum))
                     strPStrainXZ = str(format(elemOutputData.vecIpPStrainList[j][4], floatDigits).rjust(columNum))
-                    strPStrainYZ = str(format(elemOutputData.vecIpPStrainList[j][3], floatDigits).rjust(columNum))                    
+                    strPStrainYZ = str(format(elemOutputData.vecIpPStrainList[j][3], floatDigits).rjust(columNum))
                     strEPStrain = str(format(elemOutputData.ipEPStrainList[j], floatDigits).rjust(30))
-                    f.write(strElemNo + strIntNo + strPStrainXX + strPStrainYY + strPStrainZZ + 
+                    f.write(strElemNo + strIntNo + strPStrainXX + strPStrainYY + strPStrainZZ +
                             strPStrainXY + strPStrainXZ + strPStrainYZ + strEPStrain + "\n")
-            f.write("\n") """          
+            f.write("\n") """
 
             # 反力のデータを出力する
             f.write("***** Reaction Force Data ******\n")
-            f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) + 
+            f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Force".rjust(columNum) + "Y Force".rjust(columNum) +
                     "Z Force".rjust(columNum) + "\n")
             f.write("-" * columNum * 5 + "\n")
             for j in range(len(self.nodes)):
@@ -406,8 +247,110 @@ class NonlinearFEM(FEMBase):
                 elif self.nodes[0] == 2:
                     f.write(strNo + strMag + strXForce + strYForce + "\n")
                 else:
-                    a = 1    
+                    a = 1
             f.write("\n")
 
         # ファイルを閉じる
         f.close()
+
+
+    #---------------------------------------------------------------------
+    # 解析結果をvtkファイルに出力する
+    # kato(20231129)
+    #---------------------------------------------------------------------
+    def output_vtk(self, filePath):
+
+        # ファイルを作成し、開く
+        f = open(filePath + ".txt", "w")
+
+        # 出力する文字の情報を定義する
+        floatDigits = ".10g"
+
+        # vtkファイルのバージョンを指定する
+        f.write("# vtk DataFile Version 2.0\n")
+        
+        # データ名をつける
+        f.write("FEAresults\n")
+        
+        # ファイルの型を指定する
+        f.write("ASCII\n")
+        
+        # 格子タイプを非構造格子に設定する
+        f.write("DATASET UNSTRUCTURED_GRID\n")
+        
+        # 節点情報を出力する
+        # POINTS 節点数 データ型
+        f.write("POINTS" + " " + str(len(self.nodes)) + " " + "float\n")
+        for node in self.nodes:
+            strX = str(format(node.x, floatDigits))
+            strY = str(format(node.y, floatDigits))
+            strZ = str(format(0.0, floatDigits))
+            f.write(strX + " " + strY + " " + strZ + "\n")
+            
+        # 要素のコネクティビティの情報を出力する
+        # CELLS 要素数 データの数
+        num_nodes = self.elements[0].num_node
+        f.write("CELLS" + " " + str(len(self.elements)) + " " + str(len(self.elements) * (num_nodes + 1)) + "\n")
+        # 要素の節点数 節点ID1 節点ID2 節点ID3 節点ID4
+        for element in self.elements:
+            strNumNodes = str(num_nodes)
+            strNodeID1 = str(element.nodes[0].no - 1)
+            strNodeID2 = str(element.nodes[1].no - 1)
+            strNodeID3 = str(element.nodes[2].no - 1)
+            strNodeID4 = str(element.nodes[3].no - 1)
+            f.write(strNumNodes + " " + strNodeID1 + " " + strNodeID2 + " " + strNodeID3 + " " + strNodeID4 + "\n")
+        
+        # 要素タイプの設定
+        f.write("CELL_TYPES" + " " + str(len(self.elements)) + "\n")
+        # 四角形要素は9の番号が割り当てられている
+        # 他の要素は公式のpdfを参照 "https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf"
+        for element in self.elements:
+            f.write(str(9) + "\n")
+        
+        # 結果データを作成する
+        for i in range(self.num_step):
+            # 変位のデータを出力する
+            # POINT_DATA 節点数
+            f.write("POINT_DATA" + " " + str(len(self.nodes)) + "\n")
+            f.write("VECTORS DISP float\n")
+            for j in range(len(self.nodes)):
+                solution = self.solution_list[i]
+                strXDisp = str(format(solution[self.nodes[j].num_dof * j], floatDigits))
+                strYDisp = str(format(solution[self.nodes[j].num_dof * j + 1], floatDigits))
+                strZDisp = str(format(0.0, floatDigits))
+                f.write(strXDisp + " " + strYDisp + " " + strZDisp + "\n")
+        
+            # 反力のデータを出力する
+            f.write("VECTORS Freact float\n")
+            for j in range(len(self.nodes)):
+                vecRF = self.Freact_list[i]
+                strXforce = str(format(vecRF[self.nodes[j].num_dof * j], floatDigits))
+                strYforce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits))
+                strZforce = str(format(0.0, floatDigits))
+                f.write(strXforce + " " + strYforce + " " + strZforce + "\n")
+                
+            # 設計変数のデータを出力する
+            f.write("CELL_DATA" + " " + str(len(self.elements)) + "\n")
+            f.write("SCALARS Design_Variable float\n")
+            f.write("LOOKUP_TABLE default\n")
+            for j in range(len(self.elements)):
+                strDesignVariable = str(format(self.design_variable[j], floatDigits))
+                f.write(strDesignVariable + "\n")
+                
+            f.write("SCALARS Young float\n")
+            f.write("LOOKUP_TABLE default\n")
+            for j in range(len(self.elements)):
+                total_young = 0
+                for k in range(self.elements[j].ipNum):
+                    total_young = total_young + self.elements[j].material[k].young
+                
+                average_young = total_young / self.elements[j].ipNum
+                
+                strAveYoung = str(format(average_young, floatDigits))
+                f.write(strAveYoung + "\n")
+        
+        #ファイルを閉じる
+        f.close()
+
+        # txtファイルをvtkファイルに変更
+        os.rename(filePath + ".txt", filePath + ".vtk")

@@ -1,0 +1,25 @@
+#https://qiita.com/Altaka4128/items/eb4e9cb0bf46d450b03f
+
+# kato
+
+# 3次元節点格納用のクラス
+class Node2d:
+
+    # コンストラクタ
+    # no : 節点番号
+    # x  : x座標
+    # y  : y座標
+    def __init__(self, no, x, y):
+        self.no = no     # 節点番号
+        self.x = x       # x座標
+        self.y = y       # y座標
+
+        self.num_dof = 0 #自由度数
+    
+    # 自由度番号を取得する
+    def dof(self, idof):
+        return self.num_dof * (self.no - 1) + idof
+
+    # 節点の情報を表示する
+    def print_node(self):
+        print("Node No: %d, x: %f, y: %f" % (self.no, self.x, self.y))

@@ -1,3 +1,7 @@
+# kato
+
+import sys
+import os
 import platform
 pf = platform.system()
 vt = platform.mac_ver()
@@ -11,10 +15,10 @@ from src.method.fem_base import FEMBase
 #=============================================================================
 #
 #=============================================================================
-class NonlinearFEM(FEMBase):
+class NonlinearFEM2d(FEMBase):
     # コンストラクタ
     # nodes    : 節点は1から始まる順番で並んでいる前提(Node型のリスト)
-    # elements : 要素は種類ごとにソートされている前提(C3D８型のリスト)
+    # elements : 要素は種類ごとにソートされている前提(CPS4型のリスト)
     # bound    : 境界条件(d2Boundary型)
     # num_step   : インクリメント数
     def __init__(self, nodes, elements, bound, num_step):
@@ -23,7 +27,6 @@ class NonlinearFEM(FEMBase):
         self.nodes = nodes                 # 節点は1から始まる順番で並んでいる前提(Node2d型のリスト)
         self.elements = elements           # 要素は種類ごとにソートされている前提(リスト)
         self.bound = bound                 # 境界条件(d2Boundary型)
-        self.design_variable = []          # 設計変数（結果格納用）
         
         self.num_step = num_step           # インクリメント数
         self.itr_max = 20                  # ニュートン法のイテレータの上限
@@ -85,7 +88,7 @@ class NonlinearFEM(FEMBase):
             solution_bar = solution_bar_list[istep]            # istep番目のdirichlet境界の規定値
 
             # 接線剛性マトリクスKtを作成する
-            self.Kt = self.make_K()
+            Kt = self.make_K()
 
             # 境界条件を考慮しないインクリメント初期の残差力ベクトルRを作成する
             if istep == 0:
@@ -94,7 +97,7 @@ class NonlinearFEM(FEMBase):
                 R = Fext_list[istep] - Fext_list[istep - 1]
 
             # 境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-            Ktc, Rc = self.set_bound_condition(self.Kt, R, solution_bar, solution)
+            Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
 
             # 初期の残差ノルムを計算する
             residual0 = LA.norm(Rc)
@@ -118,14 +121,14 @@ class NonlinearFEM(FEMBase):
                 self.update_element_data(solution)
 
                 # 新たな接線剛性マトリクスKtを作成する
-                self.Kt = self.make_K()
+                Kt = self.make_K()
 
                 # 新たな残差力ベクトルRを求める
                 Fint = self.make_Fint()
                 R = Fext - Fint
 
                 # 新たな境界条件を考慮したKtcマトリクス、Rcベクトルを作成する
-                Ktc, Rc = self.set_bound_condition(self.Kt, R, solution_bar, solution)
+                Ktc, Rc = self.set_bound_condition(Kt, R, solution_bar, solution)
 
                 # 収束判定に必要な変数を計算する
                 check_flag, solution_rate, residual_rate = self.check_convergence(Fint, Rc, solution, solution_first, delta_solution)
@@ -200,20 +203,13 @@ class NonlinearFEM(FEMBase):
 
         # 節点情報を出力する
         f.write("***** Node Data ******\n")
-        f.write("No".rjust(columNum) + "X".rjust(columNum) + "Y".rjust(columNum) + "Z".rjust(columNum) + "\n")
-        f.write("-" * columNum * 4 + "\n")
+        f.write("No".rjust(columNum) + "X".rjust(columNum) + "Y".rjust(columNum) + "\n")
+        f.write("-" * columNum * 3 + "\n")
         for node in self.nodes:
             strNo = str(node.no).rjust(columNum)
             strX = str(format(node.x, floatDigits).rjust(columNum))
             strY = str(format(node.y, floatDigits).rjust(columNum))
-            # 3Dか2Dか判定
-            if self.nodes[0] == 3:
-                strZ = str(format(node.z, floatDigits).rjust(columNum))
-                f.write(strNo + strX + strY + strZ + "\n")
-            elif self.nodes[0] == 2:
-                f.write(strNo + strX + strY + "\n")
-            else:
-                a = 1
+            f.write(strNo + strX + strY + "\n")
         f.write("\n")
 
         # 要素情報を出力する
@@ -304,23 +300,16 @@ class NonlinearFEM(FEMBase):
             # 変位のデータを出力する
             f.write("***** Displacement Data ******\n")
             f.write("NodeNo".rjust(columNum) + "Magnitude".rjust(columNum) + "X Displacement".rjust(columNum) +
-                    "Y Displacement".rjust(columNum) + "Z Displacement".rjust(columNum) + "\n")
-            f.write("-" * columNum * 5 + "\n")
+                    "Y Displacement".rjust(columNum) + "\n")
+            f.write("-" * columNum * 4 + "\n")
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 solution = self.solution_list[i]
-                mag = np.linalg.norm(np.array((solution[self.nodes[j].num_dof * j], solution[self.nodes[j].num_dof * j + 1], solution[self.nodes[j].num_dof * j + 2])))
+                mag = np.linalg.norm(np.array((solution[self.nodes[j].num_dof * j], solution[self.nodes[j].num_dof * j + 1])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
                 strXDisp = str(format(solution[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
                 strYDisp = str(format(solution[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
-                # 3Dか2Dか判定
-                if self.nodes[0] == 3:
-                    strZDisp = str(format(solution[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
-                    f.write(strNo + strMag + strXDisp + strYDisp + strZDisp + "\n")
-                elif self.nodes[0] == 2:
-                    f.write(strNo + strMag + strXDisp + strYDisp + "\n")
-                else:
-                    a = 1          
+                f.write(strNo + strMag + strXDisp + strYDisp + "\n")            
             f.write("\n")
 
             # 応力データを出力する
@@ -395,19 +384,96 @@ class NonlinearFEM(FEMBase):
             for j in range(len(self.nodes)):
                 strNo = str(j + 1).rjust(columNum)
                 vecRF = self.Freact_list[i]
-                mag = np.linalg.norm(np.array((vecRF[self.nodes[j].num_dof * j], vecRF[self.nodes[j].num_dof * j + 1], vecRF[self.nodes[j].num_dof * j + 2])))
+                # mag = np.linalg.norm(np.array((vecRF[self.nodes[j].num_dof * j], vecRF[self.nodes[j].num_dof * j + 1], vecRF[self.nodes[j].num_dof * j + 2])))
+                mag = np.linalg.norm(np.array((vecRF[self.nodes[j].num_dof * j], vecRF[self.nodes[j].num_dof * j + 1])))
                 strMag = str(format(mag, floatDigits).rjust(columNum))
                 strXForce = str(format(vecRF[self.nodes[j].num_dof * j], floatDigits).rjust(columNum))
                 strYForce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits).rjust(columNum))
-                # 3Dか2Dか判定
-                if self.nodes[0] == 3:
-                    strZForce = str(format(vecRF[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
-                    f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")
-                elif self.nodes[0] == 2:
-                    f.write(strNo + strMag + strXForce + strYForce + "\n")
-                else:
-                    a = 1    
+                # strZForce = str(format(vecRF[self.nodes[j].num_dof * j + 2], floatDigits).rjust(columNum))
+                # f.write(strNo + strMag + strXForce + strYForce + strZForce + "\n")            
+                f.write(strNo + strMag + strXForce + strYForce + "\n")            
             f.write("\n")
 
         # ファイルを閉じる
         f.close()
+
+    #---------------------------------------------------------------------
+    # 解析結果をvtkファイルに出力する
+    # kato(20231129)
+    #---------------------------------------------------------------------
+    def output_vtk(self, filePath):
+        
+        # ファイルを作成し、開く
+        f = open(filePath + ".txt", "w")
+        
+        # 出力する文字の情報を定義する
+        floatDigits = ".10g"
+        
+        # vtkファイルのバージョンを指定する
+        f.write("# vtk DataFile Version 2.0\n")
+        
+        # データ名をつける
+        f.write("FEAresults\n")
+        
+        # ファイルの型を指定する
+        f.write("ASCII\n")
+        
+        # 格子タイプを非構造格子に設定する
+        f.write("DATASET UNSTRUCTURED_GRID\n")
+        
+        # 節点情報を出力する
+        # POINTS 節点数 データ型
+        f.write("POINTS" + " " + str(len(self.nodes)) + " " + "float\n")
+        for node in self.nodes:
+            strX = str(format(node.x, floatDigits))
+            strY = str(format(node.y, floatDigits))
+            strZ = str(format(0.0, floatDigits))
+            f.write(strX + " " + strY + " " + strZ + "\n")
+            
+        # 要素のコネクティビティの情報を出力する
+        # CELLS 要素数 データの数
+        num_nodes = self.elements[0].num_node
+        f.write("CELLS" + " " + str(len(self.elements)) + " " + str(len(self.elements) * (num_nodes + 1)) + "\n")
+        # 要素の節点数 節点ID1 節点ID2 節点ID3 節点ID4
+        for element in self.elements:
+            strNumNodes = str(num_nodes)
+            strNodeID1 = str(element.nodes[0].no - 1)
+            strNodeID2 = str(element.nodes[1].no - 1)
+            strNodeID3 = str(element.nodes[2].no - 1)
+            strNodeID4 = str(element.nodes[3].no - 1)
+            f.write(strNumNodes + " " + strNodeID1 + " " + strNodeID2 + " " + strNodeID3 + " " + strNodeID4 + "\n")
+        
+        # 要素タイプの設定
+        f.write("CELL_TYPES" + " " + str(len(self.elements)) + "\n")
+        # 四角形要素は9の番号が割り当てられている
+        # 他の要素は公式のpdfを参照 "https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf"
+        for element in self.elements:
+            f.write(str(9) + "\n")
+        
+        # 結果データを作成する
+        for i in range(self.num_step):
+            # 変位のデータを出力する
+            # POINT_DATA 節点数
+            f.write("POINT_DATA" + " " + str(len(self.nodes)) + "\n")
+            f.write("VECTORS DISP float\n")
+            for j in range(len(self.nodes)):
+                solution = self.solution_list[i]
+                strXDisp = str(format(solution[self.nodes[j].num_dof * j], floatDigits))
+                strYDisp = str(format(solution[self.nodes[j].num_dof * j + 1], floatDigits))
+                strZDisp = str(format(0.0, floatDigits))
+                f.write(strXDisp + " " + strYDisp + " " + strZDisp + "\n")
+        
+            # 反力のデータを出力する
+            f.write("VECTORS Freact float\n")
+            for j in range(len(self.nodes)):
+                vecRF = self.Freact_list[i]
+                strXforce = str(format(vecRF[self.nodes[j].num_dof * j], floatDigits))
+                strYforce = str(format(vecRF[self.nodes[j].num_dof * j + 1], floatDigits))
+                strZforce = str(format(0.0, floatDigits))
+                f.write(strXforce + " " + strYforce + " " + strZforce + "\n")
+        
+        #ファイルを閉じる
+        f.close()
+
+        # txtファイルをvtkファイルに変更
+        os.rename(filePath + ".txt", filePath + ".vtk")

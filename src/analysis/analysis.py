@@ -8,10 +8,12 @@ if parent_dir not in sys.path:
 from src.physics.structure.static_structure import StaticStructure
 from src.method.linear_fem import LinearFEM
 from src.method.nonlinear_fem import NonlinearFEM
+from src.method.nonlinear_fem_2d import NonlinearFEM2d
 from src.physics.node import Node
 from src.material.elasto_plastic_von_mises.solid import ElastoPlasticVonMisesSolid
 from src.boundary import Boundary
 from src.physics.element.C3D8_Bbar import C3D8Bbar
+from src.output.output import Output
 #=============================================================================
 #
 #=============================================================================
@@ -68,4 +70,7 @@ class Analysis:
         self.method.run()
 
         # 結果を出力する
-        self.method.output_txt(parent_dir +  "/output/C3D8_test_r1")
+        # self.method.output_txt(parent_dir +  "/output/C3D8_test_r1")
+        # self.method.output_vtk(parent_dir +  "/output/CPS4_test")
+        # self.output = Output(self.method)
+        # self.output.output_vtk(parent_dir +  "/output/CPS4_test")
