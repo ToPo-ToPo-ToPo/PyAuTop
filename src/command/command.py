@@ -6,7 +6,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from src.analysis.analysis import Analysis
-from src.analysis.optimization_analysis import OptimizationAnalysisElementBaseDensityMethod
+#from src.analysis.optimization_analysis import OptimizationAnalysisElementBaseDensityMethod
 #=============================================================================
 #
 #=============================================================================
