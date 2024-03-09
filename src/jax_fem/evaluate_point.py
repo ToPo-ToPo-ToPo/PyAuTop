@@ -7,7 +7,6 @@ class EvaluatePoint:
     #---------------------------------------------------------------------
     # コンストラクタ
     #---------------------------------------------------------------------
-    @jit
     def __init__(self, id, coordinate, weight):
         self.id = id
         self.coordinaite = coordinate

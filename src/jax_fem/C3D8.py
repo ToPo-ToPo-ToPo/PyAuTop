@@ -1,4 +1,6 @@
 import copy
+import numpy as np
+from functools import partial
 from jax import jit
 import jax.numpy as jnp
 import jax.numpy.linalg as JLA
@@ -13,12 +15,12 @@ class C3D8:
     # nodes           : 要素(Node型のリスト)
     # material        : 材料モデル
     #---------------------------------------------------------------------
-    def __init__(self, id, nodes, material):
+    def __init__(self, id, nodes):
 
         # インスタンス変数を定義する
-        self.id = id                           # 要素番号
-        self.nodes = nodes                     # 節点の集合(Node型のリスト)
-        self.material = []                     # 材料モデルのリスト
+        self.id = id                               # 要素番号
+        self.nodes = nodes                         # 節点の集合(Node型のリスト)
+        self.material = np.empty(8, dtype=object)  # 材料モデルのリスト
         
         # 要素情報の設定
         self.num_node = 8                      # 節点の数
@@ -28,15 +30,15 @@ class C3D8:
         self.num_evaluate_points = 8
         
         # 積分点の情報を追加していく
-        self.evaluate_points = []
-        self.evaluate_points.append(EvaluatePoint(1, jnp.array([-jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(2, jnp.array([ jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(3, jnp.array([ jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(4, jnp.array([-jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(5, jnp.array([-jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(6, jnp.array([ jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(7, jnp.array([ jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
-        self.evaluate_points.append(EvaluatePoint(8, jnp.array([-jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0])))
+        self.evaluate_points = np.empty(8, dtype=object)
+        self.evaluate_points[0] = EvaluatePoint(1, jnp.array([-jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[1] = EvaluatePoint(2, jnp.array([ jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[2] = EvaluatePoint(3, jnp.array([ jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[3] = EvaluatePoint(4, jnp.array([-jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[4] = EvaluatePoint(5, jnp.array([-jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[5] = EvaluatePoint(6, jnp.array([ jnp.sqrt(1.0 / 3.0), -jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[6] = EvaluatePoint(7, jnp.array([ jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
+        self.evaluate_points[7] = EvaluatePoint(8, jnp.array([-jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0),  jnp.sqrt(1.0 / 3.0)]), jnp.array([1.0, 1.0, 1.0]))
         
         # 要素内節点の自由度数を更新する
         for inode in range(len(self.nodes)):
@@ -46,11 +48,30 @@ class C3D8:
         self.Ue = jnp.zeros(self.num_node * self.num_dof_at_node)
         
         # 要素内の自由度番号のリストを作成する
-        self.dof_list = self.make_dof_list(nodes, self.num_node, self.num_dof_at_node)
-
-        # 材料モデルを初期化する
-        for ip in range(self.ipNum):
-            self.material.append(copy.deepcopy(material))
+        self.dof_list = self.make_dof_list(self.num_node, self.num_dof_at_node)
+    
+    #---------------------------------------------------------------------
+    # 要素内の自由度番号のリストを作成する
+    #---------------------------------------------------------------------
+    @partial(jit, static_argnums=(0, 1, 2))
+    def make_dof_list(self, num_node, num_dof):
+        #
+        dof_list = jnp.empty(num_node * num_dof, dtype=jnp.int32)
+        
+        for i in range(num_node):
+            for j in range(num_dof):
+                # jaxを使用する際の配列の更新方法
+                #dof_list[i * num_dof + j] = nodes[i].dof(j)
+                dof_list = dof_list.at[i * num_dof + j].set(self.nodes[i].dof(j))
+        
+        return dof_list
+    
+    #---------------------------------------------------------------------
+    # 材料モデルを設定
+    #---------------------------------------------------------------------
+    def set_material(self, material):
+        for ip in range(self.num_evaluate_points):
+            self.material[ip] = copy.deepcopy(material)
 
     #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKeを作成する
