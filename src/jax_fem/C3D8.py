@@ -75,13 +75,13 @@ class C3D8:
     #---------------------------------------------------------------------
     # 要素接線剛性マトリクスKeを作成する
     #---------------------------------------------------------------------
-    @jit
+    @partial(jit, static_argnums=(0))
     def make_Ke(self):
         # 初期化
         num_dof = self.num_dof_at_node * self.num_node
         Ke = jnp.zeros([num_dof, num_dof])
         # 積分点ループ
-        for ip in range(self.ipNum):
+        for ip in range(self.num_evaluate_points):
             # ヤコビ行列を計算する
             J = self.make_J(ip)
             # Bマトリクスを計算する
@@ -89,7 +89,7 @@ class C3D8:
             #
             C = self.material[ip].make_C()
             # 重みを取得する
-            weight = self.num_evaluate_points[ip].weight
+            weight = self.evaluate_points[ip].weight
             # 要素剛性行列Keを計算する
             Ke += weight[0] * weight[1] * weight[2] * B.T @ C @ B * JLA.det(J)  
         return Ke
@@ -143,26 +143,26 @@ class C3D8:
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    @jit
+    @partial(jit, static_argnums=(0, 1))
     def make_J(self, ip):
         # dNdabを計算する
         matdNdabc = self.make_dNda(ip)
         # xi, yi, ziの行列を計算する
         matxiyizi = jnp.array([
-            [self.nodes[0].coordinaite[0], self.nodes[0].coordinaite[1], self.nodes[0].coordinaite[2]],
-            [self.nodes[1].coordinaite[0], self.nodes[1].coordinaite[1], self.nodes[1].coordinaite[2]],
-            [self.nodes[2].coordinaite[0], self.nodes[2].coordinaite[1], self.nodes[2].coordinaite[2]],
-            [self.nodes[3].coordinaite[0], self.nodes[3].coordinaite[1], self.nodes[3].coordinaite[2]],
-            [self.nodes[4].coordinaite[0], self.nodes[4].coordinaite[1], self.nodes[4].coordinaite[2]],
-            [self.nodes[5].coordinaite[0], self.nodes[5].coordinaite[1], self.nodes[5].coordinaite[2]],
-            [self.nodes[6].coordinaite[0], self.nodes[6].coordinaite[1], self.nodes[6].coordinaite[2]],
-            [self.nodes[7].coordinaite[0], self.nodes[7].coordinaite[1], self.nodes[7].coordinaite[2]]
+            [self.nodes[0].coordinate[0], self.nodes[0].coordinate[1], self.nodes[0].coordinate[2]],
+            [self.nodes[1].coordinate[0], self.nodes[1].coordinate[1], self.nodes[1].coordinate[2]],
+            [self.nodes[2].coordinate[0], self.nodes[2].coordinate[1], self.nodes[2].coordinate[2]],
+            [self.nodes[3].coordinate[0], self.nodes[3].coordinate[1], self.nodes[3].coordinate[2]],
+            [self.nodes[4].coordinate[0], self.nodes[4].coordinate[1], self.nodes[4].coordinate[2]],
+            [self.nodes[5].coordinate[0], self.nodes[5].coordinate[1], self.nodes[5].coordinate[2]],
+            [self.nodes[6].coordinate[0], self.nodes[6].coordinate[1], self.nodes[6].coordinate[2]],
+            [self.nodes[7].coordinate[0], self.nodes[7].coordinate[1], self.nodes[7].coordinate[2]]
         ])
         # ヤコビ行列を計算する
         J = matdNdabc @ matxiyizi
         # ヤコビアンが負にならないかチェックする
-        if JLA.det(J) < 0.0:
-            raise ValueError("要素の計算に失敗しました")
+        #if JLA.det(J) < 0.0:
+        #    raise ValueError("要素の計算に失敗しました")
         return J
 
     #---------------------------------------------------------------------
@@ -171,7 +171,7 @@ class C3D8:
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    @jit
+    @partial(jit, static_argnums=(0, 1))
     def make_B(self, ip):
         # dNdaの行列を計算する
         dNda = self.make_dNda(ip)
@@ -201,7 +201,7 @@ class C3D8:
     # b : b座標値
     # c : c座標値
     #---------------------------------------------------------------------
-    @jit
+    @partial(jit, static_argnums=(0, 1))
     def make_dNda(self, ip):
         # 積分点座標を設定する
         a = self.evaluate_points[ip].coordinaite[0]

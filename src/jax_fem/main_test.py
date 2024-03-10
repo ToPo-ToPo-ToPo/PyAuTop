@@ -4,7 +4,10 @@ import jax.numpy as jnp
 from jax import jit
 from linear_elastic_plane_stress import LinearElasticPlaneStress
 from linear_elastic_brick import LinearElasticBrick
+from boundary_condition import BoundaryConditions, DirichletBc, NeummanBc
 import make_hexa8_voxel_model
+from solid_mechanics import SolidMechanics
+from linear_fem import LinearFEM
 #=============================================================================
 # メインプログラム
 #=============================================================================
@@ -21,6 +24,9 @@ def main_test():
     for element in elements:
         element.set_material(material)
         
+    # 境界条件の定義
+    boundary_conditions = BoundaryConditions()
+    
     # 境界条件の設定 ディレクレ境界
     @partial(jit, static_argnums=(0))
     def set_dirichlet_value(num_step):
@@ -35,28 +41,56 @@ def main_test():
     range_min = jnp.array([0.0, 0.0, 0.0])
     range_max = jnp.array([0.0, 0.0, 0.0])
     flags = [1, 1, 1]
-    ubar = set_dirichlet_value(num_step=num_step)
-    @partial(jit, static_argnums=(0, 1, 2, 3, 4))
-    def find_dirichlet_nodeids(nodes, range_min, range_max, flags, ubar):
-        node_ids = []
+    u_bar = set_dirichlet_value(num_step=num_step)
+    def find_dirichlet_nodes(nodes, range_min, range_max):
+        bc_nodes = []
         for node in nodes:
             x, y, z = node.coordinate
             if (range_min[0] < x < range_max[0]) and (range_min[1] < y < range_max[1]) and (range_min[2] < z < range_max[2]):
-                node_ids.append(node.id)
-        
-        node_ids_jnp = jnp.array(node_ids)
-        return node_ids_jnp
+                bc_nodes.append(node)
+        return bc_nodes
+    dirich_nodes = find_dirichlet_nodes(nodes, range_min=range_min, range_max=range_max)
+    
+    # 条件の追加
+    boundary_conditions.dirichlet_bcs.append(DirichletBc(nodes=dirich_nodes, flags=flags, values=u_bar))
+    
+    # 境界条件の設定 ノイマン境界
+    @partial(jit, static_argnums=(0))
+    def set_neumman_value(num_step):
+        t_bar = jnp.empty((num_step, 3))
+        for istep in range(num_step):
+            t_bar = t_bar.at[istep, 0].set(0.0)
+            t_bar = t_bar.at[istep, 1].set(-1.0)
+        return t_bar
+    
+    # 条件を設定
+    range_min = jnp.array([0.0, 0.0, 0.0])
+    range_max = jnp.array([0.0, 0.0, 0.0])
+    t_bar = set_neumman_value(num_step=num_step)
+    
+    def find_neumman_nodes(nodes, range_min, range_max):
+        bc_nodes = []
+        for node in nodes:
+            x, y, z = node.coordinate
+            if (range_min[0] < x < range_max[0]) and (range_min[1] < y < range_max[1]) and (range_min[2] < z < range_max[2]):
+                bc_nodes.append(node)
+        return bc_nodes
+    neum_nodes = find_neumman_nodes(nodes=nodes, range_min=range_min, range_max=range_max)
+    
+    # 条件の追加
+    boundary_conditions.neumman_bcs.append(NeummanBc(nodes=neum_nodes, values=t_bar))
                 
     # 解析モデルの作成
-    
+    model = SolidMechanics(nodes=nodes, elements=elements, boundary_conditions=boundary_conditions)
     
     # 解析手法の設定
-    
+    method = LinearFEM(model=model, num_step=num_step)
     
     # 解析の実行
-    
+    U_list, Freat_list = method.run()
     
     # ポスト処理
+    #print(U_list)
     
     
 #=============================================================================
