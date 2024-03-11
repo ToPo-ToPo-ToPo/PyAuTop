@@ -69,7 +69,7 @@ class CPS4:
     # 要素剛性マトリクスKeを作成する
     #---------------------------------------------------------------------
     @partial(jit, static_argnums=(0))
-    def make_K(self, x):
+    def make_Ke(self, x):
         # 初期化
         num_dof = self.num_dof_at_node * self.num_node
         Ke = jnp.zeros([num_dof, num_dof])
@@ -90,7 +90,7 @@ class CPS4:
     #---------------------------------------------------------------------
     # 内力ベクトルFintを作成する
     #---------------------------------------------------------------------
-    def make_Fint(self):
+    def make_Fe(self):
         # 初期化
         Fe = jnp.zeros(self.num_dof_at_node * self.num_node)
         # 積分点ループ
@@ -110,7 +110,7 @@ class CPS4:
     #---------------------------------------------------------------------
     # 等価節点力の荷重ベクトルを作成する
     #---------------------------------------------------------------------
-    def make_Fb(self):
+    def make_Fbe(self):
         # 初期化
         Fb = jnp.zeros(self.num_node * self.num_dof_at_node)
         # 積分点ループ
@@ -173,7 +173,7 @@ class CPS4:
         # Bマトリクスを計算する
         B = jnp.empty((3,0))
         for i in range(self.num_node): 
-            matTmp = np.array([
+            matTmp = jnp.array([
                 [matdNdxy[0, i], 0.0],
                 [0.0, matdNdxy[1, i]],
                 [matdNdxy[1, i], matdNdxy[0, i]]
