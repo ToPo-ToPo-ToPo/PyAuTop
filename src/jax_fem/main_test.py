@@ -39,14 +39,15 @@ def main_test():
     
     # 条件を設定
     range_min = jnp.array([0.0, 0.0, 0.0])
-    range_max = jnp.array([0.0, 0.0, 0.0])
+    range_max = jnp.array([0.0, 1.0, 1.0])
     flags = [1, 1, 1]
     u_bar = set_dirichlet_value(num_step=num_step)
     def find_dirichlet_nodes(nodes, range_min, range_max):
         bc_nodes = []
+        delta = 1.0e-05
         for node in nodes:
             x, y, z = node.coordinate
-            if (range_min[0] < x < range_max[0]) and (range_min[1] < y < range_max[1]) and (range_min[2] < z < range_max[2]):
+            if (range_min[0]-delta < x < range_max[0]+delta) and (range_min[1]-delta < y < range_max[1]+delta) and (range_min[2]-delta < z < range_max[2]+delta):
                 bc_nodes.append(node)
         return bc_nodes
     dirich_nodes = find_dirichlet_nodes(nodes, range_min=range_min, range_max=range_max)
@@ -64,15 +65,16 @@ def main_test():
         return t_bar
     
     # 条件を設定
-    range_min = jnp.array([0.0, 0.0, 0.0])
-    range_max = jnp.array([0.0, 0.0, 0.0])
+    range_min = jnp.array([3.0, 0.0, 0.0])
+    range_max = jnp.array([3.0, 1.0, 1.0])
     t_bar = set_neumman_value(num_step=num_step)
     
     def find_neumman_nodes(nodes, range_min, range_max):
         bc_nodes = []
+        delta = 1.0e-05
         for node in nodes:
             x, y, z = node.coordinate
-            if (range_min[0] < x < range_max[0]) and (range_min[1] < y < range_max[1]) and (range_min[2] < z < range_max[2]):
+            if (range_min[0]-delta < x < range_max[0]+delta) and (range_min[1]-delta < y < range_max[1]+delta) and (range_min[2]-delta < z < range_max[2]+delta):
                 bc_nodes.append(node)
         return bc_nodes
     neum_nodes = find_neumman_nodes(nodes=nodes, range_min=range_min, range_max=range_max)
@@ -90,7 +92,7 @@ def main_test():
     U_list, Freat_list = method.run()
     
     # ポスト処理
-    #print(U_list)
+    print(U_list)
     
     
 #=============================================================================

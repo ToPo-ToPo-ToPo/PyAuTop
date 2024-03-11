@@ -49,7 +49,7 @@ class LinearFEM:
 
             # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
             lhs_c, rhs_c = self.model.consider_dirichlet_bc(istep, K, Fext, U)
-            print(lhs_c)
+            #print(lhs_c)
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
             U = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)
