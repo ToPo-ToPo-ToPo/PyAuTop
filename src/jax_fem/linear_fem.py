@@ -3,6 +3,8 @@ from functools import partial
 import jax
 from jax import jit
 import jax.numpy as jnp
+from jax.experimental import sparse
+from jax.scipy.sparse.linalg import cg
 from solid_mechanics import SolidMechanics
 #=============================================================================
 # 線形FEM解析のクラス
@@ -49,8 +51,12 @@ class LinearFEM:
             # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
             lhs_c, rhs_c = self.model.consider_dirichlet_bc(istep, K, Fext, U)
 
+            # 疎行列に変換する
+            #lhs_c = sparse.CSR(lhs_c)
+
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
             U = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)
+            #U = cg(lhs_c, rhs_c)
             U_list = U_list.at[istep, :].set(U.copy())
 
             # 節点反力を計算し、インクリメントの最終的な節点反力を格納する
