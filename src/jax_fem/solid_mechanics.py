@@ -24,12 +24,16 @@ class SolidMechanics:
     #---------------------------------------------------------------------
     # 総自由度数を計算する
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0))
+    @partial(jit, static_argnums=(0,))
+    def compute_num_total_equation(self):
+        return sum(node.num_dof for node in self.nodes)
+    
+    '''@partial(jit, static_argnums=(0))
     def compute_num_total_equation(self):
         num_total_equation = 0
         for i in range(len(self.nodes)):
             num_total_equation += self.nodes[i].num_dof
-        return num_total_equation
+        return num_total_equation'''
     
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
@@ -37,7 +41,7 @@ class SolidMechanics:
     @partial(jit, static_argnums=(0))
     def make_K(self, x):
         # 初期化
-        K = jnp.array(jnp.zeros((self.num_total_equation, self.num_total_equation)))
+        K = jnp.zeros((self.num_total_equation, self.num_total_equation))
         # 全要素ループ
         for e, elem in enumerate(self.elements):
             # 要素に割り当てる設計変数を取得
@@ -52,6 +56,7 @@ class SolidMechanics:
                     # 自由度番号の取得
                     rt = elem.dof_list[r]
                     # アセンブリング: jaxを使用する際の配列の更新方法
+                    #K[ct, rt] += Ke[c, r]
                     K = K.at[(ct, rt)].add(Ke[c, r])
         return K
     
@@ -88,7 +93,7 @@ class SolidMechanics:
     #---------------------------------------------------------------------
     # ディレクレ境界用にデータを方程式を更新
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0))
+    @partial(jit, static_argnums=(0, 1, 2, 3, 4))
     def consider_dirichlet_bc(self, istep, lhs, rhs, U):
         # 初期化
         lhs_c = jnp.copy(lhs)
@@ -102,12 +107,12 @@ class SolidMechanics:
             # 節点のループ
             for node in bc.nodes:
                 for i in range(node.num_dof):
-                    # check
-                    #flag_equals_1 = jnp.equal(flags[i], 1)
+                    # 条件を与える場合
+                    dof = node.dof(i)
                     # 条件分岐
                     lhs_c, rhs_c = jax.lax.cond(
                         flags[i] == 1,
-                        lambda _: self.apply_constraint(lhs_c, rhs_c, node, i, values[i], U),
+                        lambda _: self.apply_constraint(lhs_c, rhs_c, dof, values[i], U),
                         lambda _: (lhs_c, rhs_c),
                         operand=None
                     )
@@ -117,14 +122,14 @@ class SolidMechanics:
     # consider_dirichlet_bcの内部関数
     # jax.jitでは、内部でif文による分岐ができないため
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0, 3))
-    def apply_constraint(self, lhs_c, rhs_c, node, i, value, U):
-        # 条件を与える場合
-        dof = node.dof(i)
+    @staticmethod
+    @jit
+    def apply_constraint(lhs_c, rhs_c, dof, value, U):
         # Kマトリクスからi列を抽出する
         vecx = jnp.array(lhs_c[:, dof]).flatten()
+        #vecx = lhs_c[:, dof].flatten()
         # 変位ベクトルi列の影響を荷重ベクトルに適用する
-        rhs_c = rhs_c - (value - U[dof]) * vecx
+        rhs_c -= (value - U[dof]) * vecx
         # Kマトリクスのi行、i列を全て0にし、i行i列の値を1にする
         lhs_c = lhs_c.at[:,   dof].set(0.0)
         lhs_c = lhs_c.at[dof,   :].set(0.0)

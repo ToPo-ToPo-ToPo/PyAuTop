@@ -51,7 +51,7 @@ class LinearElasticPlaneStress:
     #---------------------------------------------------------------------
     # 弾性剛性マトリクスの作成
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0))
+    @partial(jit, static_argnums=(0, ))
     def make_C(self, x):
         #
         young = (1.0e-03+x**3.0) * self.young
@@ -79,7 +79,7 @@ class LinearElasticPlaneStress:
     # ミーゼス応力を計算する
     # vecStress : 応力ベクトル(np.array型)
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0))
+    @partial(jit, static_argnums=(0, 1))
     def mises_stress(self, stress):
         
         tmp1 = 0.5 * (stress[0] + stress[1])

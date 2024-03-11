@@ -78,7 +78,7 @@ class CPS4:
             # ヤコビ行列を計算する
             J = self.make_J(ip)
             # Bマトリクスを計算する
-            B = self.make_B(ip)
+            B = self.make_B(ip, J)
             #
             C = self.material[ip].make_C(x)
             # 重みを取得する
@@ -160,7 +160,7 @@ class CPS4:
         # dNdabを計算する
         matdNdab = self.make_dNda(ip)
         # xi, yiの行列を計算する
-        matxiyi = np.array([
+        matxiyi = jnp.array([
             [self.nodes[0].coordinate[0], self.nodes[0].coordinate[1]],
             [self.nodes[1].coordinate[0], self.nodes[1].coordinate[1]],
             [self.nodes[2].coordinate[0], self.nodes[2].coordinate[1]],
@@ -168,9 +168,6 @@ class CPS4:
         ])
         # ヤコビ行列を計算する
         J = matdNdab @ matxiyi
-        # ヤコビアンが負にならないかチェックする
-        #if JLA.det(matJ) < 0:
-        #    raise ValueError("要素の計算に失敗しました")
         return J
 
     #---------------------------------------------------------------------
@@ -178,12 +175,10 @@ class CPS4:
     # a : a座標値
     # b : b座標値
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0, 1))
-    def make_B(self, ip):
+    @partial(jit, static_argnums=(0, 1, 2))
+    def make_B(self, ip, J):
         # dNdaの行列を計算する
         dNda = self.make_dNda(ip)
-        # ヤコビ行列を計算する
-        J = self.make_J(ip)
         # matdNdxy = matJinv * matdNdab
         matdNdxy = JLA.solve(J, dNda)  # J @ dNdxy = dNdaを解いている
         # Bマトリクスを計算する

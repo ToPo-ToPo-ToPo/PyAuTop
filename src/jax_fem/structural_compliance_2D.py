@@ -46,7 +46,7 @@ def main_test():
     num_step = 1
     
     # 節点とコネクティビティを作成
-    nodes, elements = make_quad4_voxel_model.run(xlength=3.0, ylength=1.0, xdiv=6, ydiv=2)
+    nodes, elements = make_quad4_voxel_model.run(xlength=3.0, ylength=1.0, xdiv=9, ydiv=3)
     
     # 材料物性を定義
     material = LinearElasticPlaneStress(young=1.0, poisson=0.3, density=1.0e-05)
