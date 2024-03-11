@@ -28,13 +28,6 @@ class SolidMechanics:
     def compute_num_total_equation(self):
         return sum(node.num_dof for node in self.nodes)
     
-    '''@partial(jit, static_argnums=(0))
-    def compute_num_total_equation(self):
-        num_total_equation = 0
-        for i in range(len(self.nodes)):
-            num_total_equation += self.nodes[i].num_dof
-        return num_total_equation'''
-    
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
     #---------------------------------------------------------------------

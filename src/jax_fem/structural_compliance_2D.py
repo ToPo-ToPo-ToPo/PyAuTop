@@ -18,21 +18,16 @@ class StaticStructuralCompliance:
         self.id = id
         self.model = model
         self.method = method
-        self.function_controller = value_and_grad(self.compute)
+        self.function_controller = jit(value_and_grad(self.compute))
     
     # コンプライアンスを計算
-    @partial(jit, static_argnums=(0))   
     def compute(self, x):
-                
         # 解析の実行
         U_list, Frac_list = self.method.run(x)
-
         # 外力の計算
         Fext = self.model.make_Ft(self.method.num_step)
-        
         # 変位の取得
         U = U_list[self.method.num_step, :]
-    
         # 関数の計算
         comp = jnp.dot(Fext, U)
         return comp
