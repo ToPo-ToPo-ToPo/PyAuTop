@@ -3,6 +3,7 @@ import abc
 import numpy as np
 import numpy.linalg as LA
 from concurrent import futures
+from functools import partial
 from jax import jit
 import jax.numpy as jnp
 #=============================================================================
@@ -33,6 +34,7 @@ class FEMBase(FEMInterface):
     #---------------------------------------------------------------------
     # 接線剛性マトリクスKtを作成する
     #---------------------------------------------------------------------
+    @partial(jit, static_argnums=(0))
     def make_K(self):
 
         # 初期化

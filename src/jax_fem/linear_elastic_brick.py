@@ -25,13 +25,13 @@ class LinearElasticBrick:
     # 応力の計算
     # Ue : 要素節点の変位ベクトル(jnp.array型)
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0))
-    def compute_stress(self, B, Ue):
+    @partial(jit, static_argnums=(0, 1, 2))
+    def compute_stress(self, B, Ue, x):
         # 全ひずみを求める
         strain = B @ Ue 
         
         # 弾性剛性マトリクスを作成する
-        C = self.make_C()
+        C = self.make_C(x)
         
         # 応力を求める
         stress = C @ strain
@@ -41,9 +41,9 @@ class LinearElasticBrick:
     #---------------------------------------------------------------------
     # 接線剛性の計算
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0))
-    def compute_tangent_matrix(self, B, Ue):
-        return self.make_C()
+    @partial(jit, static_argnums=(0, 1, 2))
+    def compute_tangent_matrix(self, B, Ue, x):
+        return self.make_C(x)
     
     #---------------------------------------------------------------------
     # ニュートンラプソン法収束後の内部変数の更新
@@ -55,9 +55,12 @@ class LinearElasticBrick:
     # 弾性状態のDマトリクスを作成する
     #---------------------------------------------------------------------
     @partial(jit, static_argnums=(0))
-    def make_C(self):
-        young = self.young
+    def make_C(self, x):
+        #
+        young = (1.0e-03+x**3.0) * self.young
+        #
         poisson = self.poisson
+        #
         tmp = young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))
         C0 = jnp.array([
             [1.0 - poisson, poisson, poisson, 0.0, 0.0, 0.0],

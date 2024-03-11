@@ -1,13 +1,43 @@
 
 from functools import partial
+import numpy as np
 import jax.numpy as jnp
 from jax import jit
+from jax import  value_and_grad
 from linear_elastic_plane_stress import LinearElasticPlaneStress
 from linear_elastic_brick import LinearElasticBrick
 from boundary_condition import BoundaryConditions, DirichletBc, NeummanBc
 import make_hexa8_voxel_model
 from solid_mechanics import SolidMechanics
 from linear_fem import LinearFEM
+#----------------------------------------------------------
+# コンプライアンスを計算するクラス
+#----------------------------------------------------------
+class StaticStructuralCompliance:
+    # 初期化
+    def __init__(self, id, model, method):
+        self.id = id
+        self.model = model
+        self.method = method
+        self.function_controller = value_and_grad(self.compute)
+    
+    # コンプライアンスを計算
+    @partial(jit, static_argnums=(0))   
+    def compute(self, x):
+                
+        # 解析の実行
+        U_list, Frac_list = self.method.run(x)
+
+        # 外力の計算
+        Fext = self.model.make_Ft(self.method.num_step)
+        
+        # 変位の取得
+        U = U_list[self.method.num_step, :]
+    
+        # 関数の計算
+        comp = jnp.dot(Fext, U)
+        return comp
+
 #=============================================================================
 # メインプログラム
 #=============================================================================
@@ -87,15 +117,35 @@ def main_test():
     
     # 解析手法の設定
     method = LinearFEM(model=model, num_step=num_step)
+
+    # 評価関数の設定
+    eval_function = StaticStructuralCompliance(id=1, model=model, method=method)
+
+    # 設計変数の定義
+    s = np.ones(len(model.elements))
+
+    # 微分の計算
+    value, df = eval_function.function_controller(s)
+    print("評価関数値: ")
+    print(value)
     
-    # 解析の実行
-    U_list, Freat_list = method.run()
+    print("感度値: ")
+    print(df)
+
+    # 設計変数の定義
+    s[0] = 0.3
+
+    # 微分の計算
+    value, df = eval_function.function_controller(s)
+    print("評価関数値: ")
+    print(value)
     
-    # ポスト処理
-    print(U_list)
+    print("感度値: ")
+    print(df)
     
     
 #=============================================================================
 # メインプログラム
 #=============================================================================
 main_test()
+       

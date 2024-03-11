@@ -19,8 +19,8 @@ class LinearFEM:
     #---------------------------------------------------------------------
     # 解析を行う
     #---------------------------------------------------------------------
-    #@partial(jit, static_argnums=(0))
-    def run(self):
+    @partial(jit, static_argnums=(0))
+    def run(self, x):
         
         # 変位ベクトルのデータ
         U_list = jnp.array(jnp.zeros((self.num_step+1, self.model.num_total_equation)))
@@ -30,7 +30,7 @@ class LinearFEM:
         Freact_list = jnp.array(jnp.zeros((self.num_step+1, self.model.num_total_equation)))
 
         # 境界条件を考慮しないKマトリクスを作成
-        K = self.model.make_K()
+        K = self.model.make_K(x)
 
         # 増分解析ループ
         for istep in range(self.num_step+1):
@@ -45,20 +45,16 @@ class LinearFEM:
 
             # i番インクリメントの荷重を設定する
             Fext = self.model.make_Ft(istep)
-            #print(Fext)
 
             # 境界条件を考慮したKマトリクス、荷重ベクトルを作成する
             lhs_c, rhs_c = self.model.consider_dirichlet_bc(istep, K, Fext, U)
-            #print(lhs_c)
 
             # 変位ベクトルを計算し、インクリメントの最終的な変位べクトルを格納する
             U = jax.scipy.linalg.solve(lhs_c, rhs_c, check_finite=False)
-            #U_list[istep, :] = U.copy()
             U_list = U_list.at[istep, :].set(U.copy())
 
             # 節点反力を計算し、インクリメントの最終的な節点反力を格納する
             Freact = jnp.array(K @ U - Fext).flatten()
-            #Freact_list[istep, :] = Freact.copy()
             Freact_list = Freact_list.at[istep, :].set(Freact.copy())
             
         return U_list, Freact_list

@@ -150,8 +150,8 @@ class C3D8(ElementBase):
         matJ = matdNdabc @ matxiyizi
 
         # ヤコビアンが負にならないかチェックする
-        if JLA.det(matJ) < 0:
-            raise ValueError("要素の計算に失敗しました")
+        #if JLA.det(matJ) < 0:
+        #    raise ValueError("要素の計算に失敗しました")
 
         return matJ
 

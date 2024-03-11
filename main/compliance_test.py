@@ -30,7 +30,7 @@ class Compliance:
                 element.material[ip].density = x[e]
                 
         # 解析の実行
-        self.method.run(x)
+        self.method.run()
         
         # 変位の取得
         U = self.method.solution_list[-1]

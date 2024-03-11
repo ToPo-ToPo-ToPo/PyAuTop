@@ -76,7 +76,7 @@ class C3D8:
     # 要素接線剛性マトリクスKeを作成する
     #---------------------------------------------------------------------
     @partial(jit, static_argnums=(0))
-    def make_Ke(self):
+    def make_Ke(self, x):
         # 初期化
         num_dof = self.num_dof_at_node * self.num_node
         Ke = jnp.zeros([num_dof, num_dof])
@@ -87,7 +87,7 @@ class C3D8:
             # Bマトリクスを計算する
             B = self.make_B(ip)
             #
-            C = self.material[ip].make_C()
+            C = self.material[ip].make_C(x)
             # 重みを取得する
             weight = self.evaluate_points[ip].weight
             # 要素剛性行列Keを計算する
