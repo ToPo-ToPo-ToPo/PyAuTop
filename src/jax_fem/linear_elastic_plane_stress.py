@@ -28,48 +28,50 @@ class LinearElasticPlaneStress:
     # 応力の計算
     # Ue : 要素節点の変位ベクトル(jnp.array型)
     #---------------------------------------------------------------------
-    @jit
-    def compute_stress(self, B, Ue):
+    @partial(jit, static_argnums=(0, 1, 2))
+    def compute_stress(self, B, Ue, x):
         # 全ひずみを求める
         strain = B @ Ue 
         
         # 弾性剛性マトリクスを作成する
-        C = self.make_C()
+        C = self.make_C(x)
         
         # 応力を求める
         stress = C @ strain
         
         return stress
     
+     #---------------------------------------------------------------------
+    # 接線剛性の計算
+    #---------------------------------------------------------------------
+    @partial(jit, static_argnums=(0, 1, 2))
+    def compute_tangent_matrix(self, B, Ue, x):
+        return self.make_C(x)
+    
     #---------------------------------------------------------------------
     # 弾性剛性マトリクスの作成
     #---------------------------------------------------------------------
-    @partial(jit, static_argnums=(0, ))
-    def make_C(self):
+    @partial(jit, static_argnums=(0))
+    def make_C(self, x):
+        #
+        young = (1.0e-03+x**3.0) * self.young
+        #
+        poisson = self.poisson
+
         # 係数
-        tmp = self.young / (1.0 - self.poisson * self.poisson)
+        tmp = young / (1.0 - poisson * poisson)
         # ベースの作成
-        C0 = jnp.array(
-            [
-                [1.0, self.poisson, 0.0],
-                [self.poisson, 1.0, 0.0],
-                [0.0, 0.0, 0.5 * (1.0 - self.poisson)]
-            ]
-        )
+        C0 = jnp.array([
+            [1.0, poisson, 0.0],
+            [poisson, 1.0, 0.0],
+            [0.0, 0.0, 0.5 * (1.0 - poisson)]
+        ])
         C = tmp * C0
         return C
                 
     #---------------------------------------------------------------------
-    # 接線剛性の計算
-    #---------------------------------------------------------------------
-    @jit
-    def compute_tangent_matrix(self, B, Ue):
-        return self.make_C()
-    
-    #---------------------------------------------------------------------
     # ニュートンラプソン法収束後の内部変数の更新
     #---------------------------------------------------------------------
-    @jit
     def update(self):
         pass
 
@@ -77,7 +79,7 @@ class LinearElasticPlaneStress:
     # ミーゼス応力を計算する
     # vecStress : 応力ベクトル(np.array型)
     #---------------------------------------------------------------------
-    @jit
+    @partial(jit, static_argnums=(0))
     def mises_stress(self, stress):
         
         tmp1 = 0.5 * (stress[0] + stress[1])
